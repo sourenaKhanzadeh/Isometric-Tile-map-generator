@@ -7,6 +7,7 @@
 #include <string>
 
 namespace Utils {
+
     class ColorPicker {
     private:
         sf::Font font;

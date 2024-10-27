@@ -26,17 +26,15 @@ void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize) {
 
 void MapRenderer::generateColors() {
     for (int i = 0; i < polygons.size(); ++i) {
-        colors.push_back(sf::Color(rand() % 256, rand() % 256, rand() % 256));
+        // make it midtone light gray
+        colors.push_back(sf::Color(128, 128, 128));
     }
 }
 
-MapRenderer::MapRenderer(const std::string& filename) {
-    loadFromGeoJSON(filename);
-    calculateBounds();
-    generateColors();
+MapRenderer::MapRenderer(const std::string& filename) : filename(filename) {
 }
 
-void MapRenderer::loadFromGeoJSON(const std::string& filename) {
+void MapRenderer::loadFromGeoJSON() {
     std::ifstream file(filename);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open GeoJSON file!");

@@ -25,16 +25,17 @@ private:
     double scale;
     sf::Vector2f offset;
     std::vector<sf::Color> colors;
+    std::string filename;
 
-    void calculateBounds();
 
     void calculateScaleAndOffset(const sf::Vector2u& windowSize);
-    void generateColors();
 
 public:
     MapRenderer(const std::string& filename);
 
-    void loadFromGeoJSON(const std::string& filename);
+    void calculateBounds();
+    void generateColors();
+    void loadFromGeoJSON();
 
     void addPolygon(const json& coordinates);
 
