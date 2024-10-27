@@ -28,8 +28,9 @@ set(LIBRARIES_TO_LINK)
 
 fetch_and_create_library(MapRenderer src/Map nlohmann_json sfml-graphics)
 fetch_and_create_library(CameraController src/Camera sfml-graphics)
+fetch_and_create_library(Utils src/Utils  sfml-graphics)
 
-list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController)
+list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils)
 
 # Main executable
 add_executable(main src/main.cpp)

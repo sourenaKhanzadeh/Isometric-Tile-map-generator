@@ -1,5 +1,6 @@
 #include "Camera/controller.hpp"
 #include "Map/renderer.hpp"
+#include "Utils/color_swatches.hpp"
 
 
 int main() {
@@ -11,6 +12,8 @@ int main() {
 
     MapRenderer mapRenderer("./countries.geo.json");
     CameraController cameraController(view);
+    sf::RenderWindow colorSwatchesWindow({400u, 400u}, "Color Swatches");
+    Utils::ColorPicker colorSwatches(colorSwatchesWindow);
 
     while (window.isOpen()) {
         sf::Event event;
@@ -21,12 +24,22 @@ int main() {
             cameraController.handleEvent(event);
         }
 
+        while (colorSwatchesWindow.pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
+                colorSwatchesWindow.close();
+            colorSwatches.handleEvent(event);
+        }
+
         cameraController.update();
         window.setView(view);
 
         window.clear();
+        colorSwatchesWindow.clear();
         mapRenderer.draw(window);
+        colorSwatches.draw();
+
         window.display();
+        colorSwatchesWindow.display();
     }
 
     return 0;
