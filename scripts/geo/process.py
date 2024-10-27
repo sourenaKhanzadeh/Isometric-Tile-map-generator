@@ -5,7 +5,7 @@ import pathlib
 
 file_path = pathlib.Path(__file__).parent / "land_lines"
 # Load the shapefile with GeoPandas
-gdf = gpd.read_file(file_path / "ne_50m_admin_0_boundary_lines_land.shp")
+gdf = gpd.read_file(file_path / "countries.shp")
 
 # Optional: Filter for specific countries or regions
 # gdf = gdf[gdf['CONTINENT'] == 'Africa']  # Example: Filter to Africa

@@ -7,77 +7,113 @@
 
 using json = nlohmann::json;
 
-struct LineString {
-    std::vector<sf::Vector2f> points;
-};
+void drawPolygon(sf::RenderWindow& window, const std::vector<sf::Vector2f>& coordinates) {
+    sf::ConvexShape polygon;
+    polygon.setPointCount(coordinates.size());
 
-// Function to load JSON data and parse LineString coordinates
-std::vector<LineString> loadMapData(const std::string &filename, float &minX, float &maxX, float &minY, float &maxY) {
-    std::vector<LineString> lineStrings;
-
-    // Load JSON file
-    std::ifstream file(filename);
-    json data;
-    file >> data;
-
-    minX = minY = std::numeric_limits<float>::max();
-    maxX = maxY = std::numeric_limits<float>::min();
-
-    // Parse each LineString in the JSON
-    for (const auto &feature : data) {
-        if (feature["geometry"]["type"] == "LineString") {
-            LineString line;
-            for (const auto &coord : feature["geometry"]["coordinates"]) {
-                float x = coord[0];
-                float y = coord[1];
-                line.points.emplace_back(sf::Vector2f(x, y));
-
-                // Track min and max coordinates for scaling
-                minX = std::min(minX, x);
-                maxX = std::max(maxX, x);
-                minY = std::min(minY, y);
-                maxY = std::max(maxY, y);
-            }
-            lineStrings.push_back(line);
-        }
+    for (size_t i = 0; i < coordinates.size(); ++i) {
+        polygon.setPoint(i, coordinates[i]);
     }
-    return lineStrings;
+
+    polygon.setFillColor(sf::Color::Green);
+    window.draw(polygon);
 }
 
-int main()
-{
-    float minX, maxX, minY, maxY;
+int main() {
+    std::ifstream geojsonFile("./countries.geo.json");
+    if (!geojsonFile.is_open()) {
+        std::cerr << "Failed to open GeoJSON file!" << std::endl;
+        return -1;
+    }
 
-    auto lineStrings = loadMapData("map_data.json", minX, maxX, minY, maxY);
+    json geojsonData;
+    geojsonFile >> geojsonData;
 
-    auto window = sf::RenderWindow({1920u, 1080u}, "Fortifier: Forge and Conquer");
+    sf::RenderWindow window({1920u, 1080u}, "Fortifier: Forge and Conquer");
     window.setFramerateLimit(144);
 
-    // Calculate scaling factors to fit map within the window
+    // Variables for min and max coordinates
+    double minX = std::numeric_limits<double>::max();
+    double maxX = std::numeric_limits<double>::lowest();
+    double minY = std::numeric_limits<double>::max();
+    double maxY = std::numeric_limits<double>::lowest();
+
+    // Store all the polygons
+    std::vector<std::vector<std::pair<double, double>>> allPolygons;
+
+    // Iterate through features in GeoJSON
+    for (const auto& feature : geojsonData["features"]) {
+        const auto& geometry = feature["geometry"];
+        std::string geomType = geometry["type"];
+
+        if (geomType == "Polygon") {
+            // Handle Polygon geometry
+            for (const auto& coords : geometry["coordinates"]) {
+                std::vector<std::pair<double, double>> coordinates;
+
+                for (const auto& point : coords) {
+                    double x = point[0].get<double>(); // longitude
+                    double y = point[1].get<double>(); // latitude
+
+                    // Update min and max for scaling
+                    minX = std::min(minX, x);
+                    maxX = std::max(maxX, x);
+                    minY = std::min(minY, y);
+                    maxY = std::max(maxY, y);
+
+                    coordinates.emplace_back(x, y);
+                }
+                allPolygons.push_back(coordinates);
+            }
+        } else if (geomType == "MultiPolygon") {
+            // Handle MultiPolygon geometry
+            for (const auto& polygon : geometry["coordinates"]) {
+                for (const auto& coords : polygon) {
+                    std::vector<std::pair<double, double>> coordinates;
+
+                    for (const auto& point : coords) {
+                        double x = point[0].get<double>(); // longitude
+                        double y = point[1].get<double>(); // latitude
+
+                        // Update min and max for scaling
+                        minX = std::min(minX, x);
+                        maxX = std::max(maxX, x);
+                        minY = std::min(minY, y);
+                        maxY = std::max(maxY, y);
+
+                        coordinates.emplace_back(x, y);
+                    }
+                    allPolygons.push_back(coordinates);
+                }
+            }
+        }
+    }
+
+    // Calculate scaling factors to fit the map within the window
     float windowWidth = window.getSize().x;
     float windowHeight = window.getSize().y;
 
-    float scaleX = windowWidth / (maxX - minX);
-    float scaleY = windowHeight / (maxY - minY);
-    float scale = std::min(scaleX, scaleY);  // Uniform scaling factor
+    double scaleX = windowWidth / (maxX - minX);
+    double scaleY = windowHeight / (maxY - minY);
+    double scale = std::min(scaleX, scaleY); // Uniform scaling to maintain aspect ratio
 
-    // Centering offsets
-    float offsetX = (windowWidth - (maxX - minX) * scale) / 2.0f;
-    float offsetY = (windowHeight - (maxY - minY) * scale) / 2.0f;
+    // Calculate offsets to center the map
+    double mapWidth = (maxX - minX) * scale;
+    double mapHeight = (maxY - minY) * scale;
 
-    // Initialize the view centered on the map
+    double offsetX = (windowWidth - mapWidth) / 2.0;
+    double offsetY = (windowHeight - mapHeight) / 2.0;
+
+    // Initialize the view
     sf::View view(sf::FloatRect(0, 0, windowWidth, windowHeight));
-    view.setCenter((maxX + minX) / 2.0f, (maxY + minY) / 2.0f); // Centered on the map
-    view.setSize(windowWidth, windowHeight); // Set view size to window size
+    view.setSize(windowWidth, windowHeight);
 
-    float moveSpeed = 10.0f; // Speed for moving the camera
-    float zoomFactor = 1.1f;     // Zoom factor (1.1 for zooming out, 1/1.1 for zooming in)
+    float moveSpeed = 10.0f; // Camera movement speed
+    float zoomFactor = 1.1f; // Zoom factor
 
-    while (window.isOpen())
-    {
+    while (window.isOpen()) {
         sf::Event event;
-        while (window.pollEvent(event))
-        {
+        while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed)
                 window.close();
 
@@ -92,19 +128,19 @@ int main()
         }
 
         // Camera movement with arrow keys or WASD
-        float zoomLevel = view.getSize().x / windowWidth; // Get the current zoom level
+        float zoomLevel = view.getSize().x / windowWidth; // Current zoom level
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            view.move(-moveSpeed * zoomLevel, 0); // Adjust movement speed based on zoom level
+            view.move(-moveSpeed * zoomLevel, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            view.move(moveSpeed * zoomLevel, 0); // Adjust movement speed based on zoom level
+            view.move(moveSpeed * zoomLevel, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            view.move(0, -moveSpeed * zoomLevel); // Adjust movement speed based on zoom level
+            view.move(0, -moveSpeed * zoomLevel);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            view.move(0, moveSpeed * zoomLevel); // Adjust movement speed based on zoom level
+            view.move(0, moveSpeed * zoomLevel);
         }
 
         // Apply the view to the window
@@ -112,18 +148,23 @@ int main()
 
         window.clear();
 
-        // Draw each LineString
-        for (const auto &line : lineStrings) {
-            sf::VertexArray lineShape(sf::LineStrip, line.points.size());
-            for (size_t i = 0; i < line.points.size(); ++i) {
-                // Apply scaling and offset
-                float x = line.points[i].x;
-                float y = line.points[i].y;
-                lineShape[i].position = sf::Vector2f(x, y);
-                lineShape[i].color = sf::Color::Green; // Set color for visibility
+        // Draw all polygons with transformed coordinates
+        for (const auto& coordinates : allPolygons) {
+            std::vector<sf::Vector2f> transformedCoordinates;
+
+            for (const auto& coord : coordinates) {
+                // Scale and translate coordinates
+                double x = (coord.first - minX) * scale + offsetX;
+                double y = (maxY - coord.second) * scale + offsetY; // Flip Y-axis
+
+                transformedCoordinates.emplace_back(static_cast<float>(x), static_cast<float>(y));
             }
-            window.draw(lineShape);
+
+            drawPolygon(window, transformedCoordinates);
         }
+
         window.display();
     }
+
+    return 0;
 }
