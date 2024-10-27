@@ -11,7 +11,7 @@ namespace Utils {
           redActive(false), greenActive(false), blueActive(false), hexInputActive(false) {
 
         // Load font for text display
-        if (!font.loadFromFile("arial.TTF")) {
+        if (!font.loadFromFile("res/font/arial.TTF")) {
             throw std::runtime_error("Failed to load font");
         }
 

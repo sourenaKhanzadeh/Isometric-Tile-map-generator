@@ -1,77 +1,59 @@
 #include <SFML/Graphics.hpp>
-#include <thread>
-#include <future>
-#include <atomic>
-#include <condition_variable>
+#include <SFML/System.hpp> // For SFML threading
 #include <iostream>
+#include <memory>
 #include "Camera/controller.hpp"
 #include "Map/renderer.hpp"
 #include "Utils/color_swatches.hpp"
 
-// Flags and synchronization tools
-std::atomic<bool> isRunning(true);
-std::atomic<bool> colorPickerActive(false);
-std::condition_variable colorSwatchCondition;
-std::mutex colorSwatchMutex;
+// Global flag to indicate if color swatch window is active
+bool colorPickerActive = false;
+sf::Mutex colorPickerMutex;  // SFML mutex to synchronize access to colorPickerActive
 
-// Async resource loading function
-std::future<void> loadResourcesAsync(MapRenderer& mapRenderer) {
-    return std::async(std::launch::async, [&mapRenderer] {
-        std::this_thread::sleep_for(std::chrono::seconds(1));  // Simulate loading delay
-        mapRenderer.loadFromGeoJSON();
-        mapRenderer.calculateBounds();
-        mapRenderer.generateColors();
-        std::cout << "Resources loaded asynchronously.\n";
-    });
-}
-
-// Placeholder function for future game update logic
-void placeholderGameUpdate(float deltaTime) {
-    // Future game logic (physics, events) would go here
-}
-
-// Thread function to run the color swatch window
+// Function to run the color swatch window on a separate SFML thread
 void runColorSwatchWindow() {
-    while (isRunning) {
-        // Wait until colorPickerActive is true
-        {
-            std::unique_lock<std::mutex> lock(colorSwatchMutex);
-            colorSwatchCondition.wait(lock, [] { return colorPickerActive || !isRunning; });
-            if (!isRunning) return;  // Exit if the game is closing
-        }
+    sf::RenderWindow colorSwatchesWindow(sf::VideoMode(400, 400), "Color Swatches");
+    Utils::ColorPicker colorSwatches(colorSwatchesWindow);
 
-        // Create the color swatch window
-        sf::RenderWindow colorSwatchesWindow(sf::VideoMode(400, 400), "Color Swatches");
-        Utils::ColorPicker colorSwatches(colorSwatchesWindow);
-
-        // Handle events and rendering for color swatch window
-        while (colorSwatchesWindow.isOpen() && colorPickerActive) {
-            sf::Event colorSwatchEvent;
-            while (colorSwatchesWindow.pollEvent(colorSwatchEvent)) {
-                if (colorSwatchEvent.type == sf::Event::Closed) {
-                    colorPickerActive = false;
-                } else {
-                    colorSwatches.handleEvent(colorSwatchEvent);
-                }
+    while (colorSwatchesWindow.isOpen()) {
+        sf::Event colorSwatchEvent;
+        while (colorSwatchesWindow.pollEvent(colorSwatchEvent)) {
+            if (colorSwatchEvent.type == sf::Event::Closed) {
+                colorSwatchesWindow.close();
+                sf::Lock lock(colorPickerMutex); // Lock to safely modify colorPickerActive
+                colorPickerActive = false;
+            } else {
+                colorSwatches.handleEvent(colorSwatchEvent);
             }
-            colorSwatchesWindow.clear(sf::Color::Black);
-            colorSwatches.draw();
-            colorSwatchesWindow.display();
         }
 
-        // Close the window after exiting loop
-        colorSwatchesWindow.close();
-
-        // Notify that the window has been closed
-        {
-            std::lock_guard<std::mutex> lock(colorSwatchMutex);
-            colorPickerActive = false;
-        }
+        colorSwatchesWindow.clear(sf::Color::Black);
+        colorSwatches.draw();
+        colorSwatchesWindow.display();
     }
 }
 
-// Main function to toggle color swatch and handle game loop
+// Function to toggle color swatch window
+void toggleColorSwatchWindow(std::unique_ptr<sf::Thread>& colorSwatchThread) {
+    sf::Lock lock(colorPickerMutex); // Lock to safely access colorPickerActive
+
+    if (colorPickerActive) {
+        // Close the color swatch window if it's active
+        colorPickerActive = false;
+        if (colorSwatchThread) {
+            colorSwatchThread->wait();  // Just call wait() without checking its return value
+            colorSwatchThread.reset();
+        }
+    } else {
+        // Start a new thread to open the color swatch window
+        colorPickerActive = true;
+        colorSwatchThread = std::make_unique<sf::Thread>(&runColorSwatchWindow);
+        colorSwatchThread->launch();
+    }
+}
+
 int main() {
+    // Main game window setup
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Fortifier: Forge and Conquer");
     window.setFramerateLimit(144);
 
@@ -79,18 +61,13 @@ int main() {
     window.setView(view);
 
     MapRenderer mapRenderer("./countries.geo.json");
+    mapRenderer.loadFromGeoJSON();
+    mapRenderer.calculateBounds();
+    mapRenderer.generateColors();
+
     CameraController cameraController(view);
 
-    // Asynchronously load resources
-    auto resourceLoader = loadResourcesAsync(mapRenderer);
-
-    // Set up timing variables for fixed timestep updates
-    const float fixedTimeStep = 1.0f / 60.0f;
-    float accumulatedTime = 0.0f;
-    sf::Clock clock;
-
-    // Start color swatch thread (but it waits until signaled to open the window)
-    std::thread colorSwatchThread(runColorSwatchWindow);
+    std::unique_ptr<sf::Thread> colorSwatchThread;
 
     // Main game loop
     while (window.isOpen()) {
@@ -98,51 +75,34 @@ int main() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
-                isRunning = false;
-                colorSwatchCondition.notify_all();
-                colorSwatchThread.join();
+                sf::Lock lock(colorPickerMutex); // Lock to safely modify colorPickerActive
+                colorPickerActive = false;
+
+                // Wait for color swatch thread to finish if active
+                if (colorSwatchThread) {
+                    colorSwatchThread->wait();  // Just call wait() without checking its return value
+                    colorSwatchThread.reset();
+                }
             }
 
             // Toggle color swatch window with F1 key
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F1) {
-                std::lock_guard<std::mutex> lock(colorSwatchMutex);
-                colorPickerActive = !colorPickerActive;
-                colorSwatchCondition.notify_all();  // Signal thread to open or close window
+                toggleColorSwatchWindow(colorSwatchThread);
             }
 
             cameraController.handleEvent(event);
         }
 
-        // Calculate elapsed time
-        float deltaTime = clock.restart().asSeconds();
-        accumulatedTime += deltaTime;
-
-        // Ensure resources are loaded before proceeding with updates
-        if (resourceLoader.valid() && resourceLoader.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            resourceLoader.get();  // Complete resource loading
-        }
-
-        // Fixed timestep updates
-        while (accumulatedTime >= fixedTimeStep) {
-            placeholderGameUpdate(fixedTimeStep);
-            accumulatedTime -= fixedTimeStep;
-        }
-
-        // Update camera
-        cameraController.update();
-        window.setView(view);
-
-        // Render main window
+        // Render main game window
         window.clear(sf::Color::Black);
         mapRenderer.draw(window);
         window.display();
     }
 
-    // Ensure color swatch thread exits when main window closes
-    if (colorSwatchThread.joinable()) {
-        isRunning = false;
-        colorSwatchCondition.notify_all();
-        colorSwatchThread.join();
+    // Wait for the color swatch thread to finish when the main window closes
+    if (colorSwatchThread) {
+        colorSwatchThread->wait();  // Just call wait() without checking its return value
+        colorSwatchThread.reset();
     }
 
     return 0;
