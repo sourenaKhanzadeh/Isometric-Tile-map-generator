@@ -22,6 +22,7 @@ private:
     Coordinate minBounds, maxBounds;
     double scale;
     sf::Vector2f offset;
+    std::vector<sf::Color> colors;
 
     void calculateBounds() {
         for (const auto& polygon : polygons) {
@@ -46,10 +47,17 @@ private:
         offset.y = (windowSize.y - mapHeight) / 2.0f;
     }
 
+    void generateColors() {
+        for (int i = 0; i < polygons.size(); ++i) {
+            colors.push_back(sf::Color(rand() % 256, rand() % 256, rand() % 256));
+        }
+    }
+
 public:
     MapRenderer(const std::string& filename) {
         loadFromGeoJSON(filename);
         calculateBounds();
+        generateColors();
     }
 
     void loadFromGeoJSON(const std::string& filename) {
@@ -86,7 +94,8 @@ public:
     void draw(sf::RenderWindow& window) {
         calculateScaleAndOffset(window.getSize());
 
-        for (const auto& polygon : polygons) {
+        for (int i = 0; i < polygons.size(); ++i) {
+            const auto& polygon = polygons[i];
             sf::ConvexShape shape;
             shape.setPointCount(polygon.coordinates.size());
 
@@ -96,7 +105,8 @@ public:
                 shape.setPoint(i, sf::Vector2f(x, y));
             }
 
-            shape.setFillColor(sf::Color::Green);
+            // set different colors for each country
+            shape.setFillColor(colors[i]);
             window.draw(shape);
         }
     }
