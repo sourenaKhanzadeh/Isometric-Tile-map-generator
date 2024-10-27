@@ -44,8 +44,6 @@ std::vector<LineString> loadMapData(const std::string &filename, float &minX, fl
     return lineStrings;
 }
 
-
-
 int main()
 {
     float minX, maxX, minY, maxY;
@@ -63,40 +61,50 @@ int main()
     float scaleY = windowHeight / (maxY - minY);
     float scale = std::min(scaleX, scaleY);  // Uniform scaling factor
 
-     // Centering offsets
+    // Centering offsets
     float offsetX = (windowWidth - (maxX - minX) * scale) / 2.0f;
     float offsetY = (windowHeight - (maxY - minY) * scale) / 2.0f;
 
     // Initialize the view centered on the map
     sf::View view(sf::FloatRect(0, 0, windowWidth, windowHeight));
-    view.setCenter((maxX + minX) / 2.0f * scale + offsetX, (maxY + minY) / 2.0f * scale + offsetY);
+    view.setCenter((maxX + minX) / 2.0f, (maxY + minY) / 2.0f); // Centered on the map
+    view.setSize(windowWidth, windowHeight); // Set view size to window size
 
     float moveSpeed = 10.0f; // Speed for moving the camera
-
-
+    float zoomFactor = 1.1f;     // Zoom factor (1.1 for zooming out, 1/1.1 for zooming in)
 
     while (window.isOpen())
     {
-        for (auto event = sf::Event(); window.pollEvent(event);)
+        sf::Event event;
+        while (window.pollEvent(event))
         {
             if (event.type == sf::Event::Closed)
-            {
                 window.close();
+
+            // Mouse wheel event for zooming
+            if (event.type == sf::Event::MouseWheelScrolled) {
+                if (event.mouseWheelScroll.delta > 0) {
+                    view.zoom(1.0f / zoomFactor); // Zoom in
+                } else if (event.mouseWheelScroll.delta < 0) {
+                    view.zoom(zoomFactor); // Zoom out
+                }
             }
         }
 
         // Camera movement with arrow keys or WASD
+        float zoomLevel = view.getSize().x / windowWidth; // Get the current zoom level
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            view.move(-moveSpeed, 0);
+            view.move(-moveSpeed * zoomLevel, 0); // Adjust movement speed based on zoom level
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            view.move(moveSpeed, 0);
+            view.move(moveSpeed * zoomLevel, 0); // Adjust movement speed based on zoom level
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            view.move(0, -moveSpeed);
+            view.move(0, -moveSpeed * zoomLevel); // Adjust movement speed based on zoom level
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            view.move(0, moveSpeed);
+            view.move(0, moveSpeed * zoomLevel); // Adjust movement speed based on zoom level
         }
 
         // Apply the view to the window
@@ -104,13 +112,13 @@ int main()
 
         window.clear();
 
-         // Draw each LineString
+        // Draw each LineString
         for (const auto &line : lineStrings) {
             sf::VertexArray lineShape(sf::LineStrip, line.points.size());
             for (size_t i = 0; i < line.points.size(); ++i) {
                 // Apply scaling and offset
-                float x = (line.points[i].x - minX) * scale + offsetX;
-                float y = (line.points[i].y - minY) * scale + offsetY;
+                float x = line.points[i].x;
+                float y = line.points[i].y;
                 lineShape[i].position = sf::Vector2f(x, y);
                 lineShape[i].color = sf::Color::Green; // Set color for visibility
             }
