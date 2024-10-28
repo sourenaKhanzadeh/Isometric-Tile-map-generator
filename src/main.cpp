@@ -11,9 +11,9 @@ bool colorPickerActive = false;
 sf::Mutex colorPickerMutex;  // SFML mutex to synchronize access to colorPickerActive
 
 // Function to run the color swatch window on a separate SFML thread
-void runColorSwatchWindow() {
+void runColorSwatchWindow(MapRenderer& mapRenderer) {
     sf::RenderWindow colorSwatchesWindow(sf::VideoMode(400, 400), "Color Swatches");
-    Utils::ColorPicker colorSwatches(colorSwatchesWindow);
+    Utils::ColorPicker colorSwatches(colorSwatchesWindow, mapRenderer);
 
     while (colorSwatchesWindow.isOpen()) {
         sf::Event colorSwatchEvent;
@@ -34,7 +34,7 @@ void runColorSwatchWindow() {
 }
 
 // Function to toggle color swatch window
-void toggleColorSwatchWindow(std::unique_ptr<sf::Thread>& colorSwatchThread) {
+void toggleColorSwatchWindow(std::unique_ptr<sf::Thread>& colorSwatchThread, MapRenderer& mapRenderer) {
     sf::Lock lock(colorPickerMutex); // Lock to safely access colorPickerActive
 
     if (colorPickerActive) {
@@ -47,7 +47,7 @@ void toggleColorSwatchWindow(std::unique_ptr<sf::Thread>& colorSwatchThread) {
     } else {
         // Start a new thread to open the color swatch window
         colorPickerActive = true;
-        colorSwatchThread = std::make_unique<sf::Thread>(&runColorSwatchWindow);
+        colorSwatchThread = std::make_unique<sf::Thread>(&runColorSwatchWindow, std::ref(mapRenderer));
         colorSwatchThread->launch();
     }
 }
@@ -87,7 +87,7 @@ int main() {
 
             // Toggle color swatch window with F1 key
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F1) {
-                toggleColorSwatchWindow(colorSwatchThread);
+                toggleColorSwatchWindow(colorSwatchThread, mapRenderer);
             }
 
             cameraController.handleEvent(event);

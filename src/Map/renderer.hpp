@@ -22,6 +22,8 @@ struct Polygon {
 
 class MapRenderer {
 private:
+    std::string selectedCountry;
+    Polygon selectedPolygon;
     std::vector<std::string> names;
     std::vector<Polygon> polygons;
     Coordinate minBounds, maxBounds;
@@ -45,6 +47,7 @@ public:
 
     void draw(sf::RenderWindow& window);
     void update(const sf::Vector2f& mousePos);
+    void updateSelectedColor(const sf::Color& color);
 };
 
 

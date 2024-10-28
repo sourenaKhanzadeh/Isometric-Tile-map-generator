@@ -134,12 +134,22 @@ void MapRenderer::update(const sf::Vector2f& mousePos) {
     // Implement hover effect
     for (size_t i = 0; i < polygons.size(); i++) {
         if (isPointInPolygon(worldPos, polygons[i].coordinates)) {
-            // Highlight the polygon
-            colors[i] = sf::Color(255, 255, 255);
-        } else {
+            // if pressed, select the country
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+                selectedCountry = names[i];
+                selectedPolygon = polygons[i];
+                colors[i] = sf::Color(255, 255, 255);
+            }
+        }
+    }
+
+    // if no country is selected, reset the colors
+    for(size_t i = 0; i < polygons.size(); i++){
+        if(names[i] != selectedCountry && colors[i] == sf::Color(255, 255, 255)){
             colors[i] = sf::Color(128, 128, 128);
         }
     }
+
 }
 
 bool MapRenderer::isPointInPolygon(const sf::Vector2f& point, const std::vector<Coordinate>& polygon) {
@@ -155,4 +165,17 @@ bool MapRenderer::isPointInPolygon(const sf::Vector2f& point, const std::vector<
         }
     }
     return inside;
+}
+
+void MapRenderer::updateSelectedColor(const sf::Color& color) {
+    if (selectedCountry.empty()) {
+        return;
+    }
+    
+    for (size_t i = 0; i < names.size(); i++) {
+        if (names[i] == selectedCountry) {
+            colors[i] = color;
+            break;
+        }
+    }
 }

@@ -28,7 +28,7 @@ set(LIBRARIES_TO_LINK)
 
 fetch_and_create_library(MapRenderer src/Map nlohmann_json sfml-graphics)
 fetch_and_create_library(CameraController src/Camera sfml-graphics)
-fetch_and_create_library(Utils src/Utils  sfml-graphics)
+fetch_and_create_library(Utils src/Utils  nlohmann_json sfml-graphics)
 
 list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils)
 

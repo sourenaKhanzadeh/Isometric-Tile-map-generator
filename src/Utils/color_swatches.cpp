@@ -6,8 +6,8 @@
 
 namespace Utils {
 
-    ColorPicker::ColorPicker(sf::RenderWindow& window) 
-        : window(window), redValue(0), greenValue(0), blueValue(0), 
+    ColorPicker::ColorPicker(sf::RenderWindow& window, MapRenderer& mapRenderer) 
+        : window(window), mapRenderer(mapRenderer), redValue(0), greenValue(0), blueValue(0), 
           redActive(false), greenActive(false), blueActive(false), hexInputActive(false) {
 
         // Load font for text display
@@ -101,6 +101,8 @@ namespace Utils {
             // Update color display based on slider values
             colorDisplay.setFillColor(sf::Color(redValue, greenValue, blueValue));
             colorHexText.setString(encodeHex());
+            // changed the selected color of the country in the map renderer
+            mapRenderer.updateSelectedColor(colorDisplay.getFillColor());
         }
         else if (event.type == sf::Event::TextEntered && hexInputActive) {
             if (std::isxdigit(event.text.unicode) && colorHexText.getString().getSize() < 6) {

@@ -5,11 +5,13 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
-
+#include "../Map/renderer.hpp"
 namespace Utils {
 
     class ColorPicker {
     private:
+        MapRenderer& mapRenderer;
+
         sf::Font font;
         sf::Text colorHexText;
         sf::RectangleShape colorDisplay;
@@ -25,7 +27,7 @@ namespace Utils {
         std::string encodeHex() const;
 
     public:
-        ColorPicker(sf::RenderWindow& window);
+        ColorPicker(sf::RenderWindow& window, MapRenderer& mapRenderer);
         void handleEvent(const sf::Event& event);
         void draw();
         sf::Color getColor() const;
