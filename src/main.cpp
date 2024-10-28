@@ -58,8 +58,8 @@ int main() {
     window.setFramerateLimit(144);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
-    window.setView(view);
 
+    // MapRenderer mapRenderer("./countries.geo.json");
     MapRenderer mapRenderer("./countries.geo.json");
     mapRenderer.loadFromGeoJSON();
     mapRenderer.calculateBounds();
@@ -93,6 +93,9 @@ int main() {
             cameraController.handleEvent(event);
         }
 
+        window.setView(view);
+        cameraController.update();
+        mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
         // Render main game window
         window.clear(sf::Color::Black);
         mapRenderer.draw(window);

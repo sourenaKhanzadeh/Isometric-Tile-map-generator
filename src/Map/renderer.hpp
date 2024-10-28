@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <cstdlib>
 
+#define DEBUG_MAP_RENDERER
+
 using json = nlohmann::json;
 
 struct Coordinate {
@@ -20,6 +22,7 @@ struct Polygon {
 
 class MapRenderer {
 private:
+    std::vector<std::string> names;
     std::vector<Polygon> polygons;
     Coordinate minBounds, maxBounds;
     double scale;
@@ -29,6 +32,7 @@ private:
 
 
     void calculateScaleAndOffset(const sf::Vector2u& windowSize);
+    bool isPointInPolygon(const sf::Vector2f& point, const std::vector<Coordinate>& polygon);
 
 public:
     MapRenderer(const std::string& filename);
@@ -40,6 +44,7 @@ public:
     void addPolygon(const json& coordinates);
 
     void draw(sf::RenderWindow& window);
+    void update(const sf::Vector2f& mousePos);
 };
 
 
