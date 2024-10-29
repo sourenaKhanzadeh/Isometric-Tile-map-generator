@@ -179,3 +179,33 @@ void MapRenderer::updateSelectedColor(const sf::Color& color) {
         }
     }
 }
+
+MapDrawTexture::MapDrawTexture(MapRenderer& mapRenderer) : mapRenderer(mapRenderer) {
+    lowResTexture.create(1920, 1080);
+    mediumResTexture.create(3840, 2160);
+    highResTexture.create(7680, 4320);
+    highResTexture.loadFromFile("res/Earth-Large.png");
+
+
+    lowResSprite.setTexture(lowResTexture);
+    mediumResSprite.setTexture(mediumResTexture);
+    highResSprite.setTexture(highResTexture);
+
+
+}
+
+void MapDrawTexture::draw(sf::RenderWindow& window) {
+    window.draw(lowResSprite);
+    window.draw(mediumResSprite);
+    window.draw(highResSprite);
+}
+
+void MapDrawTexture::updateMapTexture(float zoomFactor, sf::Sprite& mapSprite) {
+    if (zoomFactor < 0.5f) {  // Far out: low resolution
+        mapSprite.setTexture(lowResTexture, true);
+    } else if (zoomFactor < 1.5f) {  // Mid-range: medium resolution
+        mapSprite.setTexture(mediumResTexture, true);
+    } else {  // Close in: high resolution
+        mapSprite.setTexture(highResTexture, true);
+    }
+}

@@ -1,26 +1,39 @@
 cmake_minimum_required(VERSION 3.28)
-project(CMakeSFMLProject LANGUAGES CXX)
+project(Fortifier LANGUAGES CXX)
 
 include(cmake/include.cmake)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
 include(FetchContent)
-FetchContent_Declare(SFML
+include(cmake/CPM.cmake)
+
+
+
+# FetchContent_Declare(mapgen
+#     GIT_REPOSITORY https://github.com/averrin/mapgen-viewer.git
+#     GIT_TAG v0.7.0
+#     GIT_SHALLOW ON
+#     EXCLUDE_FROM_ALL
+#     SYSTEM)
+
+CPMAddPackage(
+    NAME SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 2.6.x
     GIT_SHALLOW ON
     EXCLUDE_FROM_ALL
     SYSTEM)
 
-FetchContent_Declare(json
+CPMAddPackage(
+    NAME json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.2
     GIT_SHALLOW ON
     EXCLUDE_FROM_ALL
     SYSTEM)
 
-FetchContent_MakeAvailable(SFML json)
+# FetchContent_MakeAvailable(mapgen)
 
 # Gather all subdirectories in src and create libraries from each
 file(GLOB SUBDIRECTORIES RELATIVE "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/src/*")

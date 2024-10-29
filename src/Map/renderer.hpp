@@ -50,5 +50,18 @@ public:
     void updateSelectedColor(const sf::Color& color);
 };
 
+class MapDrawTexture {
+private:
+    float zoomFactor = 1.0f;
+    sf::Texture lowResTexture, mediumResTexture, highResTexture;
+    sf::Sprite lowResSprite, mediumResSprite, highResSprite;
+    MapRenderer& mapRenderer;
+
+public:
+    MapDrawTexture(MapRenderer& mapRenderer);
+    void draw(sf::RenderWindow& window);
+    void updateMapTexture(float zoomFactor, sf::Sprite& mapSprite);
+};
+
 
 #endif // MAP_RENDERER_HPP
