@@ -2,15 +2,19 @@
 #include <SFML/System.hpp> // For SFML threading
 #include <iostream>
 #include <memory>
+#include <thread>
 #include "Camera/controller.hpp"
 #include "Map/renderer.hpp"
-#include "Utils/color_swatches.hpp"
-
+#include "Utils/progressbar.hpp"
 
 int main() {
     // Main game window setup
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Fortifier: Forge and Conquer");
     window.setFramerateLimit(144);
+
+    // anchor the progress bar to bottom center of the screen
+    ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
+    progressBar.setTotalItems(2);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
 
@@ -19,10 +23,18 @@ int main() {
     mapRenderer.loadFromGeoJSON();
     mapRenderer.calculateBounds();
     mapRenderer.generateColors();
-    MapDrawTexture mapDrawTexture;
+    MapDrawTexture mapDrawTexture(progressBar);
 
     CameraController cameraController(view);
 
+    std::thread textureLoadingThread([&mapDrawTexture]() {
+        mapDrawTexture.loadTexturesAsync();
+    });
+
+
+    progressBar.update("Loading textures...");
+
+    textureLoadingThread.join();
     // Main game loop
     while (window.isOpen()) {
         sf::Event event;

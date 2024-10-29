@@ -7,6 +7,9 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cstdlib>
+#include <vector>
+#include <future>
+#include "../Utils/progressbar.hpp"
 
 #define DEBUG_MAP_RENDERER
 
@@ -51,18 +54,20 @@ public:
 };
 
 class MapDrawTexture {
-private:
-    float currentZoomFactor = 1.0f;  // Track current zoom level
-    bool isHighResActive = false;
-    sf::Texture lowResTexture, highResTexture;
-    sf::Sprite mapSprite;
-    sf::Vector2f offset;
-
 public:
-    sf::Sprite lowResSprite, highResSprite;
-    MapDrawTexture();
-    void draw(sf::RenderWindow& window);
+    MapDrawTexture(ProgressBar& progressBar);
+    void loadTexturesAsync();
     void updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize);
+    void draw(sf::RenderWindow& window);
+
+private:
+    sf::Texture lowResTexture;
+    sf::Texture highResTexture;
+    sf::Sprite mapSprite;
+    bool isHighResActive = false;
+    float currentZoomFactor = 1.0f;
+
+    ProgressBar& progressBar;
 };
 
 

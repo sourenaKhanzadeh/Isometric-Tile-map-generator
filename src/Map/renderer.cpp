@@ -180,19 +180,31 @@ void MapRenderer::updateSelectedColor(const sf::Color& color) {
     }
 }
 
-MapDrawTexture::MapDrawTexture() {
-    lowResTexture.create(1920, 1080);
-    highResTexture.create(7680, 4320);
-    highResTexture.loadFromFile("res/Earth-Large.png");
-    lowResTexture.loadFromFile("res/Earth-Small.png");
+MapDrawTexture::MapDrawTexture(ProgressBar& progressBar)
+    : progressBar(progressBar) {}
 
+void MapDrawTexture::loadTexturesAsync() {
+    // Run each texture loading in a separate async task
+    std::vector<std::future<void>> futures;
 
-    lowResSprite.setTexture(lowResTexture);
-    highResSprite.setTexture(highResTexture);
+    futures.emplace_back(std::async(std::launch::async, [this]() {
+        lowResTexture.loadFromFile("res/Earth-Small.png");
+        progressBar.incrementProgress();
+    }));
 
-    mapSprite.setTexture(lowResTexture);  // Start with low-res texture
+    futures.emplace_back(std::async(std::launch::async, [this]() {
+        highResTexture.loadFromFile("res/Earth-Large.png");
+        progressBar.incrementProgress();
+    }));
+
+    // Wait for all textures to load
+    for (auto& future : futures) {
+        future.get(); // Wait for each async task to complete
+    }
+
+    // Set the initial texture after loading
+    mapSprite.setTexture(lowResTexture);
 }
-
 
 void MapDrawTexture::updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize) {
     currentZoomFactor = zoomFactor;
@@ -210,7 +222,7 @@ void MapDrawTexture::updateMapTexture(float zoomFactor, const sf::Vector2u& wind
     sf::Vector2u textureSize = mapSprite.getTexture()->getSize();
     float scaleX = static_cast<float>(windowSize.x) / textureSize.x;
     float scaleY = static_cast<float>(windowSize.y) / textureSize.y;
-    
+
     // Apply uniform scaling to fit the screen
     mapSprite.setScale(scaleX * zoomFactor, scaleY * zoomFactor);
 
