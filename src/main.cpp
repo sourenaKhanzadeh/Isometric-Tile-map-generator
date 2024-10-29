@@ -19,7 +19,7 @@ int main() {
     mapRenderer.loadFromGeoJSON();
     mapRenderer.calculateBounds();
     mapRenderer.generateColors();
-    MapDrawTexture mapDrawTexture(mapRenderer);
+    MapDrawTexture mapDrawTexture;
 
     CameraController cameraController(view);
 
@@ -42,6 +42,7 @@ int main() {
         window.clear(sf::Color::Black);
         mapRenderer.draw(window);
         mapDrawTexture.draw(window);
+        mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
         window.display();
     }
 

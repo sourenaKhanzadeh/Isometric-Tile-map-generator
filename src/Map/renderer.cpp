@@ -180,32 +180,47 @@ void MapRenderer::updateSelectedColor(const sf::Color& color) {
     }
 }
 
-MapDrawTexture::MapDrawTexture(MapRenderer& mapRenderer) : mapRenderer(mapRenderer) {
+MapDrawTexture::MapDrawTexture() {
     lowResTexture.create(1920, 1080);
-    mediumResTexture.create(3840, 2160);
     highResTexture.create(7680, 4320);
     highResTexture.loadFromFile("res/Earth-Large.png");
+    lowResTexture.loadFromFile("res/Earth-Small.png");
 
 
     lowResSprite.setTexture(lowResTexture);
-    mediumResSprite.setTexture(mediumResTexture);
     highResSprite.setTexture(highResTexture);
 
+    mapSprite.setTexture(lowResTexture);  // Start with low-res texture
+}
 
+
+void MapDrawTexture::updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize) {
+    currentZoomFactor = zoomFactor;
+
+    // Switch to high resolution if zoomed in enough, otherwise use low resolution
+    if (zoomFactor < 0.5f && isHighResActive) {  // Far out: low resolution
+        mapSprite.setTexture(lowResTexture, true);
+        isHighResActive = false;
+    } else if (zoomFactor >= 0.5f && !isHighResActive) {  // Close in: switch to high resolution
+        mapSprite.setTexture(highResTexture, true);
+        isHighResActive = true;
+    }
+
+    // Calculate scaling factor to fit the map to the screen for both textures
+    sf::Vector2u textureSize = mapSprite.getTexture()->getSize();
+    float scaleX = static_cast<float>(windowSize.x) / textureSize.x;
+    float scaleY = static_cast<float>(windowSize.y) / textureSize.y;
+    
+    // Apply uniform scaling to fit the screen
+    mapSprite.setScale(scaleX * zoomFactor, scaleY * zoomFactor);
+
+    // Center the map sprite based on window size and scaled texture dimensions
+    mapSprite.setPosition(
+        (windowSize.x - textureSize.x * mapSprite.getScale().x) / 2.0f,
+        (windowSize.y - textureSize.y * mapSprite.getScale().y) / 2.0f
+    );
 }
 
 void MapDrawTexture::draw(sf::RenderWindow& window) {
-    window.draw(lowResSprite);
-    window.draw(mediumResSprite);
-    window.draw(highResSprite);
-}
-
-void MapDrawTexture::updateMapTexture(float zoomFactor, sf::Sprite& mapSprite) {
-    if (zoomFactor < 0.5f) {  // Far out: low resolution
-        mapSprite.setTexture(lowResTexture, true);
-    } else if (zoomFactor < 1.5f) {  // Mid-range: medium resolution
-        mapSprite.setTexture(mediumResTexture, true);
-    } else {  // Close in: high resolution
-        mapSprite.setTexture(highResTexture, true);
-    }
+    window.draw(mapSprite);
 }

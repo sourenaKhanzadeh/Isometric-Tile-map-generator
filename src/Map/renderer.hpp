@@ -52,15 +52,17 @@ public:
 
 class MapDrawTexture {
 private:
-    float zoomFactor = 1.0f;
-    sf::Texture lowResTexture, mediumResTexture, highResTexture;
-    sf::Sprite lowResSprite, mediumResSprite, highResSprite;
-    MapRenderer& mapRenderer;
+    float currentZoomFactor = 1.0f;  // Track current zoom level
+    bool isHighResActive = false;
+    sf::Texture lowResTexture, highResTexture;
+    sf::Sprite mapSprite;
+    sf::Vector2f offset;
 
 public:
-    MapDrawTexture(MapRenderer& mapRenderer);
+    sf::Sprite lowResSprite, highResSprite;
+    MapDrawTexture();
     void draw(sf::RenderWindow& window);
-    void updateMapTexture(float zoomFactor, sf::Sprite& mapSprite);
+    void updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize);
 };
 
 

@@ -8,11 +8,16 @@ private:
     sf::View& view;
     float moveSpeed;
     float zoomFactor;
+    float minZoom;
+    float maxZoom;
+
+    float currentZoom;
 
 public:
-    CameraController(sf::View& view, float moveSpeed = 10.0f, float zoomFactor = 1.1f);
+    CameraController(sf::View& view, float moveSpeed = 10.0f, float zoomFactor = 1.1f, float minZoom = 0.5f, float maxZoom = 10.0f);
     void handleEvent(const sf::Event& event);
     void update();
+    float getZoomFactor() const;
 };
 
 #endif // CAMERA_CONTROLLER_HPP
