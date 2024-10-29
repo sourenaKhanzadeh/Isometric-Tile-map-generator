@@ -6,12 +6,16 @@
 #include "Camera/controller.hpp"
 #include "Map/renderer.hpp"
 #include "Utils/progressbar.hpp"
+#include <imgui.h>
+#include <imgui-sfml.h>
 
+#define DEBUG 1
 int main() {
     // Main game window setup
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Fortifier: Forge and Conquer");
     window.setFramerateLimit(144);
 
+#if DEBUG == 0
     // anchor the progress bar to bottom center of the screen
     ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
     progressBar.setTotalItems(2);
@@ -58,6 +62,9 @@ int main() {
         window.display();
     }
 
+#else
+    // Debug mode
+#endif
 
     return 0;
 }

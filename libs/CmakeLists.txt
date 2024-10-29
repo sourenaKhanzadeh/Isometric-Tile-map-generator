@@ -1,0 +1,45 @@
+
+# FetchContent_Declare(mapgen
+#     GIT_REPOSITORY https://github.com/averrin/mapgen-viewer.git
+#     GIT_TAG v0.7.0
+#     GIT_SHALLOW ON
+#     EXCLUDE_FROM_ALL
+#     SYSTEM)
+
+CPMAddPackage(
+    NAME SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 2.6.x
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM)
+
+CPMAddPackage(
+    NAME json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM)
+
+FetchContent_Declare(
+    imgui
+    URL "https://github.com/ocornut/imgui/archive/v1.91.4.zip"
+  )
+
+
+FetchContent_Declare(
+  imgui-sfml
+  GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
+  GIT_TAG        2.6.x
+)
+
+# Dear ImGui
+FetchContent_MakeAvailable(imgui)
+
+# ImGui-SFML
+set(IMGUI_DIR ${imgui_SOURCE_DIR})
+option(IMGUI_SFML_FIND_SFML "Use find_package to find SFML" OFF)
+option(IMGUI_SFML_IMGUI_DEMO "Build imgui_demo.cpp" ON)
+
+FetchContent_MakeAvailable(imgui-sfml)

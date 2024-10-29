@@ -9,29 +9,7 @@ include(FetchContent)
 include(cmake/CPM.cmake)
 
 
-
-# FetchContent_Declare(mapgen
-#     GIT_REPOSITORY https://github.com/averrin/mapgen-viewer.git
-#     GIT_TAG v0.7.0
-#     GIT_SHALLOW ON
-#     EXCLUDE_FROM_ALL
-#     SYSTEM)
-
-CPMAddPackage(
-    NAME SFML
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 2.6.x
-    GIT_SHALLOW ON
-    EXCLUDE_FROM_ALL
-    SYSTEM)
-
-CPMAddPackage(
-    NAME json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.2
-    GIT_SHALLOW ON
-    EXCLUDE_FROM_ALL
-    SYSTEM)
+add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
 
 # FetchContent_MakeAvailable(mapgen)
 
@@ -49,7 +27,7 @@ list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils)
 add_executable(main src/main.cpp)
     
 # Link all libraries created from subdirectories and additional dependencies
-target_link_libraries(main PRIVATE ${LIBRARIES_TO_LINK} sfml-graphics nlohmann_json)
+target_link_libraries(main PRIVATE ${LIBRARIES_TO_LINK} sfml-graphics nlohmann_json ImGui-SFML::ImGui-SFML)
 target_compile_features(main PRIVATE cxx_std_17)
 
 
