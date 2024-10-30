@@ -61,7 +61,7 @@ void CameraController::update() {
     float clampedY = std::clamp(viewCenter.y, minY, maxY);
 
     // Update the view center to the clamped values
-    view.setCenter(clampedX, clampedY);
+    // view.setCenter(clampedX, clampedY);
 }
 
 float CameraController::getZoomFactor() const {

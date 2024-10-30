@@ -9,7 +9,7 @@
 #include "Utils/progressbar.hpp"
 #include <imgui.h>
 #include <imgui-sfml.h>
-
+#include "Map/plot.hpp"
 #define DEBUG 1
 int main() {
     // Main game window setup
@@ -71,17 +71,10 @@ int main() {
     }
     // anchor the progress bar to bottom center of the screen
     ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
-    progressBar.setTotalItems(3);
+    progressBar.setTotalItems(2);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
 
-    // MapRenderer mapRenderer("./countries.geo.json");
-    // MapRenderer mapRenderer("./countries.geo.json");
-    // mapRenderer.loadFromGeoJSON();
-    // mapRenderer.calculateBounds();
-    // mapRenderer.generateColors();
-
-    Contours contours("./contours.json");
 
     MapDrawTexture mapDrawTexture(progressBar);
 
@@ -91,20 +84,14 @@ int main() {
         mapDrawTexture.loadTexturesAsync();
     });
 
-    std::thread contoursLoadingThread([&contours, &progressBar]() {
-        contours.asyncLoadContours(progressBar);
-    });
-
     progressBar.update("Loading textures...");
 
     textureLoadingThread.join();
-    contoursLoadingThread.join();
-
     sf::Clock deltaClock;
     float mapColors[3] = {0.f, 0.f, 0.f};
     float contourColor[3] = {0.f, 0.f, 0.f};
-    float contourScale = 1.0f;
-    sf::Vector2f contourOffset(0.f, 0.f);
+    std::string countryName(100, '\0');
+    PlotOnMap *plotOnMap = new PlotOnMap();
     // Main game loop
     while (window.isOpen()) {
         sf::Event event;
@@ -115,6 +102,7 @@ int main() {
                 ImGui::SFML::Shutdown(window);
             }
             cameraController.handleEvent(event);
+            plotOnMap->handleEvent(event, window);
         }
         ImGui::SFML::Update(window, deltaClock.restart());
 
@@ -124,10 +112,16 @@ int main() {
         ImGui::Text("Mouse Position: %lf, %lf", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
         ImGui::ColorEdit3("Color", mapColors);
         ImGui::ColorEdit3("Contour Color", contourColor);
-        ImGui::SliderFloat("Contour Scale", &contourScale, 0.1f, 10.0f);
-        ImGui::SliderFloat("Contour Offset X", &contourOffset.x, -1000.0f, 1000.0f);
-        ImGui::SliderFloat("Contour Offset Y", &contourOffset.y, -1000.0f, 1000.0f);
-
+        if (ImGui::CollapsingHeader("Plot on Map")) {
+            ImGui::Checkbox("Toggle Plot on Map", &plotOnMap->togglePlotMap);
+            ImGui::InputText("Country Name", countryName.data(), countryName.capacity());
+            if (ImGui::Button("Save Coordinates")) {
+            plotOnMap->saveCoordinates("coordinates.json", countryName);
+                delete plotOnMap;
+                plotOnMap = PlotOnMap::createPlotOnMap();
+                plotOnMap->setCountryName(countryName);
+            }
+        }
         ImGui::End();
         // Obtain map scaling and offset
         sf::Vector2u windowSize = window.getSize();
@@ -146,11 +140,11 @@ int main() {
         // mapRenderer.draw(window);
         mapDrawTexture.draw(window);
         mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
-        contours.draw(window, cameraController.getZoomFactor());
-        contours.changeColor(updatedContourColor);
+        plotOnMap->draw(window, cameraController.getZoomFactor());
         ImGui::SFML::Render(window);
         window.display();
     }
+    delete plotOnMap;
     ImGui::SFML::Shutdown(window);
 
 #endif
