@@ -236,3 +236,8 @@ void MapDrawTexture::updateMapTexture(float zoomFactor, const sf::Vector2u& wind
 void MapDrawTexture::draw(sf::RenderWindow& window) {
     window.draw(mapSprite);
 }
+
+sf::Vector2u MapDrawTexture::getTextureSize() {
+    return lowResTexture.getSize();
+}
+

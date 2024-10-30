@@ -59,6 +59,7 @@ public:
     void loadTexturesAsync();
     void updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize);
     void draw(sf::RenderWindow& window);
+    sf::Vector2u getTextureSize();
 
 private:
     sf::Texture lowResTexture;

@@ -18,6 +18,7 @@ public:
     void handleEvent(const sf::Event& event);
     void update();
     float getZoomFactor() const;
+    sf::Vector2f getOffsetWithZoom() const;
 };
 
 #endif // CAMERA_CONTROLLER_HPP

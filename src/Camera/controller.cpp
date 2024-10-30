@@ -67,3 +67,8 @@ void CameraController::update() {
 float CameraController::getZoomFactor() const {
     return zoomFactor;
 }
+
+sf::Vector2f CameraController::getOffsetWithZoom() const {
+    return view.getCenter() - sf::Vector2f(1920 / 2, 1080 / 2);
+}
+
