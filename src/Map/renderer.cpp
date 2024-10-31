@@ -19,30 +19,31 @@ void MapRenderer::calculateBounds() {
     }
 }
 
-void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor) {
-    // Cache window dimensions
-    const double winWidth = static_cast<double>(windowSize.x);
-    const double winHeight = static_cast<double>(windowSize.y);
-    
-    // Calculate scale once
-    const double width = maxBounds.x - minBounds.x;
-    const double height = maxBounds.y - minBounds.y;
-    scale = std::min(winWidth / width, winHeight / height) * zoomFactor;
+void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor, const sf::Vector2u& textureSize) {
+    // Calculate the width and height of the polygon bounds in coordinate space
+    float mapCoordWidth = maxBounds.x - minBounds.x;
+    float mapCoordHeight = maxBounds.y - minBounds.y;
 
-    // Precalculate map dimensions
-    const double mapWidth = width * scale;
-    const double mapHeight = height * scale;
+    // Calculate scale to fit the window dimensions
+    float scaleX = static_cast<float>(windowSize.x) / mapCoordWidth;
+    float scaleY = static_cast<float>(windowSize.y) / mapCoordHeight;
 
-    // Center map
-    offset.x = (winWidth - mapWidth) / 2.0f;
-    offset.y = (winHeight - mapHeight) / 2.0f;
+    // Apply the zoom factor, keeping the aspect ratio consistent
+    scale = std::min(scaleX, scaleY) * zoomFactor;
+
+    // Calculate offset to align and center polygons within the window
+    offset.x = (windowSize.x - mapCoordWidth * scale) / 2.0f;
+    offset.y = (windowSize.y - mapCoordHeight * scale) / 2.0f;
 }
+
 
 
 MapRenderer::MapRenderer(const std::string& filename, ProgressBar& progressBar) : filename(filename) {
     // Reserve space for large datasets
     polygons.reserve(1000);
     colors.reserve(1000);
+    
+    font.loadFromFile("res/font/arial.TTF");
 
     // async load the geojson file
     std::thread loadThread([this, &progressBar]() {
@@ -76,7 +77,15 @@ void MapRenderer::loadFromGeoJSON() {
     #pragma omp parallel for
     for (size_t i = 0; i < features.size(); i++) {
         const auto& feature = features[i];
-        names.push_back(feature["properties"]["name"].get<std::string>());
+        std::string name;
+
+        // Check if the "name" field exists; if not, assign a default name
+        if (feature.contains("properties") && feature["properties"].contains("name")) {
+            name = feature["properties"]["name"].get<std::string>();
+        } else {
+            name = "Unknown_" + std::to_string(i); // Assign a unique placeholder name
+        }
+
         const auto& geometry = feature["geometry"];
         const std::string& geomType = geometry["type"];
 
@@ -88,6 +97,7 @@ void MapRenderer::loadFromGeoJSON() {
                 #pragma omp critical
                 addPolygon(polygon);
                 colors.push_back(sf::Color(dis(gen), dis(gen), dis(gen), 50));
+                names.push_back(name);
             }
         }
     }
@@ -107,40 +117,98 @@ void MapRenderer::addPolygon(const json& coordinates) {
     polygons.push_back(std::move(polygon));
 }
 
-void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor) {
-    calculateScaleAndOffset(window.getSize(), zoomFactor);
+sf::Vector2f MapRenderer::calculateCentroid(const std::vector<Coordinate>& coordinates) {
+    float sumX = 0.0f;
+    float sumY = 0.0f;
+    for (const auto& coord : coordinates) {
+        sumX += coord.x;
+        sumY += coord.y;
+    }
+    float centerX = sumX / coordinates.size();
+    float centerY = sumY / coordinates.size();
+    return sf::Vector2f(centerX, centerY);
+}
+
+
+
+void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const RendererSettings& rendererSettings, const sf::Vector2u& textureSize) {
+    calculateScaleAndOffset(window.getSize(), zoomFactor, textureSize);
 
     // Create vertex arrays for batch rendering
-    std::vector<sf::VertexArray> shapes;
-    shapes.reserve(polygons.size());
+    sf::VertexArray vertexArray(sf::Triangles);
 
-    #pragma omp parallel for
+    // Initialize countryNames only if toggleNames is true
+    std::vector<sf::Text> countryNames;
+    if (toggleNames) {
+        countryNames.resize(polygons.size());
+    }
+
+    // Loop through each polygon and add vertices to a single vertex array
     for (size_t i = 0; i < polygons.size(); i++) {
         const auto& polygon = polygons[i];
-        sf::VertexArray shape(sf::LineStrip, polygon.coordinates.size() + 1);
+        const sf::Color color = colors[i];
 
-        // Create the polygon shape
-        for (size_t j = 0; j < polygon.coordinates.size(); j++) {
-            shape[j].position = sf::Vector2f(
-                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * scale + offset.x),
-                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * scale + offset.y)
+        if (toggleNames) {
+            // Check if name is valid and handle empty names
+            std::string displayName = (i < names.size() && !names[i].empty()) ? names[i] : "Unknown";
+            countryNames[i] = sf::Text(displayName, font);
+
+            // Calculate the centroid of the polygon for positioning
+            sf::Vector2f centroid = calculateCentroid(polygon.coordinates);
+
+            // Calculate bounding box size of the polygon for scaling the text
+            float polygonWidth = maxBounds.x - minBounds.x;
+            float polygonHeight = maxBounds.y - minBounds.y;
+            float minDimension = std::min(polygonWidth, polygonHeight);
+
+            // Set text origin to its center for accurate centering
+            countryNames[i].setOrigin(countryNames[i].getLocalBounds().width / 2.0f, countryNames[i].getLocalBounds().height / 2.0f);
+            countryNames[i].setCharacterSize(static_cast<unsigned int>(minDimension / 5) + rendererSettings.fontSize); // Adjust divisor as needed
+
+            countryNames[i].setPosition(
+                static_cast<float>((centroid.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                static_cast<float>((maxBounds.y - centroid.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
             );
-            shape[j].color = colors[i]; // Ensure color is applied
+            countryNames[i].setFillColor(sf::Color(rendererSettings.fontColor[0] * 255, rendererSettings.fontColor[1] * 255, rendererSettings.fontColor[2] * 255));
+            countryNames[i].setOutlineColor(sf::Color::Black);
+            countryNames[i].setOutlineThickness(1.0f);
+
         }
 
-        // Close the polygon
-        shape[polygon.coordinates.size()].position = shape[0].position;
-        shape[polygon.coordinates.size()].color = colors[i];
-
-        #pragma omp critical
-        {
-            shapes.push_back(std::move(shape));
+        // Add triangles for rendering polygons
+        for (size_t j = 1; j < polygon.coordinates.size() - 1; j++) {
+            vertexArray.append(sf::Vertex(
+                sf::Vector2f(
+                    static_cast<float>((polygon.coordinates[0].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon.coordinates[0].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                ),
+                color
+            ));
+            vertexArray.append(sf::Vertex(
+                sf::Vector2f(
+                    static_cast<float>((polygon.coordinates[j].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                ),
+                color
+            ));
+            vertexArray.append(sf::Vertex(
+                sf::Vector2f(
+                    static_cast<float>((polygon.coordinates[j + 1].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon.coordinates[j + 1].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                ),
+                color
+            ));
         }
     }
 
-    // Batch render all shapes
-    for (const auto& shape : shapes) {
-        window.draw(shape);
+    // Render the entire vertex array in one draw call
+    window.draw(vertexArray);
+
+    // Only draw country names if toggleNames is true
+    if (toggleNames) {
+        for (const auto& name : countryNames) {
+            window.draw(name);
+        }
     }
 
     // Draw the outline
@@ -148,8 +216,8 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor) {
         sf::VertexArray outline(sf::LineStrip, polygon.coordinates.size() + 1);
         for (size_t j = 0; j < polygon.coordinates.size(); j++) {
             outline[j].position = sf::Vector2f(
-                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * scale + offset.x),
-                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * scale + offset.y)
+                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
             );
             outline[j].color = sf::Color::Black; // Outline color
         }
@@ -159,6 +227,7 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor) {
         window.draw(outline);
     }
 }
+
 
 void MapRenderer::update(const sf::Vector2f& mousePos) {
     // Convert mouse position to world coordinates considering scale and offset

@@ -93,6 +93,7 @@ int main() {
     float mapColors[3] = {0.f, 0.f, 0.f};
     float contourColor[3] = {0.f, 0.f, 0.f};
     std::string countryName(100, '\0');
+    RendererSettings rendererSettings = {sf::Vector2f(0.0, 0.91), sf::Vector2f(0.0, -70.0)};
     PlotOnMap *plotOnMap = new PlotOnMap();
     // Main game loop
     while (window.isOpen()) {
@@ -113,6 +114,19 @@ int main() {
         ImGui::Text("Mouse Position: %lf, %lf", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
         ImGui::ColorEdit3("Color", mapColors);
         ImGui::ColorEdit3("Contour Color", contourColor);
+        if(ImGui::CollapsingHeader("Renderer: Settings")){
+            if(ImGui::CollapsingHeader("Names")){
+                ImGui::Checkbox("Toggle Names", &mapRenderer.toggleNames);
+                ImGui::SliderFloat("Font Size", &rendererSettings.fontSize, 1.0, 100.0);
+                ImGui::ColorEdit3("Font Color", rendererSettings.fontColor);
+            }
+            if(ImGui::CollapsingHeader("Scale and Offset")){
+                ImGui::SliderFloat("ScaleX", &rendererSettings.scale.x, 0.0, 1.0);
+                ImGui::SliderFloat("ScaleY", &rendererSettings.scale.y, 0.0, 1.0);
+                ImGui::SliderFloat("OffsetX", &rendererSettings.offset.x, -1000.0, 1000.0);
+                ImGui::SliderFloat("OffsetY", &rendererSettings.offset.y, -1000.0, 1000.0);
+            }
+        }
         ImGui::End();
         // Obtain map scaling and offset
         sf::Vector2u windowSize = window.getSize();
@@ -132,7 +146,7 @@ int main() {
         mapDrawTexture.draw(window);
         mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
         plotOnMap->draw(window, cameraController.getZoomFactor());
-        mapRenderer.draw(window, cameraController.getZoomFactor());
+        mapRenderer.draw(window, cameraController.getZoomFactor(), rendererSettings, textureSize);
         ImGui::SFML::Render(window);
         window.display();
     }
