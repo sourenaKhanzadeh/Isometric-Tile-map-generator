@@ -27,7 +27,6 @@ int main() {
     MapRenderer mapRenderer("./countries.geo.json");
     mapRenderer.loadFromGeoJSON();
     mapRenderer.calculateBounds();
-    mapRenderer.generateColors();
     MapDrawTexture mapDrawTexture(progressBar);
 
     CameraController cameraController(view);
@@ -71,10 +70,10 @@ int main() {
     }
     // anchor the progress bar to bottom center of the screen
     ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
-    progressBar.setTotalItems(2);
+    progressBar.setTotalItems(3);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
-
+     // MapRenderer mapRenderer("./countries.geo.json");
 
     MapDrawTexture mapDrawTexture(progressBar);
 
@@ -83,6 +82,9 @@ int main() {
     std::thread textureLoadingThread([&mapDrawTexture]() {
         mapDrawTexture.loadTexturesAsync();
     });
+    MapRenderer mapRenderer("./countries.geo.json", progressBar);
+    mapRenderer.loadFromGeoJSON();
+    mapRenderer.calculateBounds();
 
     progressBar.update("Loading textures...");
 
@@ -102,7 +104,6 @@ int main() {
                 ImGui::SFML::Shutdown(window);
             }
             cameraController.handleEvent(event);
-            plotOnMap->handleEvent(event, window);
         }
         ImGui::SFML::Update(window, deltaClock.restart());
 
@@ -112,16 +113,6 @@ int main() {
         ImGui::Text("Mouse Position: %lf, %lf", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
         ImGui::ColorEdit3("Color", mapColors);
         ImGui::ColorEdit3("Contour Color", contourColor);
-        if (ImGui::CollapsingHeader("Plot on Map")) {
-            ImGui::Checkbox("Toggle Plot on Map", &plotOnMap->togglePlotMap);
-            ImGui::InputText("Country Name", countryName.data(), countryName.capacity());
-            if (ImGui::Button("Save Coordinates")) {
-            plotOnMap->saveCoordinates("coordinates.json", countryName);
-                delete plotOnMap;
-                plotOnMap = PlotOnMap::createPlotOnMap();
-                plotOnMap->setCountryName(countryName);
-            }
-        }
         ImGui::End();
         // Obtain map scaling and offset
         sf::Vector2u windowSize = window.getSize();
@@ -134,13 +125,14 @@ int main() {
         sf::Vector2f mapOffset = cameraController.getOffsetWithZoom();
         window.setView(view);
         cameraController.update();
-        // mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
+        mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
         // Render main game window
         window.clear(sf::Color::Black);
         // mapRenderer.draw(window);
         mapDrawTexture.draw(window);
         mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
         plotOnMap->draw(window, cameraController.getZoomFactor());
+        mapRenderer.draw(window, cameraController.getZoomFactor());
         ImGui::SFML::Render(window);
         window.display();
     }

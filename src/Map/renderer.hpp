@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <vector>
 #include <future>
+#include <random>
 #include "../Utils/progressbar.hpp"
 
 #define DEBUG_MAP_RENDERER
@@ -36,19 +37,18 @@ private:
     std::string filename;
 
 
-    void calculateScaleAndOffset(const sf::Vector2u& windowSize);
+    void calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor);
     bool isPointInPolygon(const sf::Vector2f& point, const std::vector<Coordinate>& polygon);
 
 public:
-    MapRenderer(const std::string& filename);
+    MapRenderer(const std::string& filename, ProgressBar& progressBar);
 
     void calculateBounds();
-    void generateColors();
     void loadFromGeoJSON();
 
     void addPolygon(const json& coordinates);
 
-    void draw(sf::RenderWindow& window);
+    void draw(sf::RenderWindow& window, float zoomFactor);
     void update(const sf::Vector2f& mousePos);
     void updateSelectedColor(const sf::Color& color);
 };

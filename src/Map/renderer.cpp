@@ -19,7 +19,7 @@ void MapRenderer::calculateBounds() {
     }
 }
 
-void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize) {
+void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor) {
     // Cache window dimensions
     const double winWidth = static_cast<double>(windowSize.x);
     const double winHeight = static_cast<double>(windowSize.y);
@@ -27,7 +27,7 @@ void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize) {
     // Calculate scale once
     const double width = maxBounds.x - minBounds.x;
     const double height = maxBounds.y - minBounds.y;
-    scale = std::min(winWidth / width, winHeight / height);
+    scale = std::min(winWidth / width, winHeight / height) * zoomFactor;
 
     // Precalculate map dimensions
     const double mapWidth = width * scale;
@@ -38,17 +38,26 @@ void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize) {
     offset.y = (winHeight - mapHeight) / 2.0f;
 }
 
-void MapRenderer::generateColors() {
-    colors.resize(polygons.size(), sf::Color(128, 128, 128));
-}
 
-MapRenderer::MapRenderer(const std::string& filename) : filename(filename) {
+MapRenderer::MapRenderer(const std::string& filename, ProgressBar& progressBar) : filename(filename) {
     // Reserve space for large datasets
     polygons.reserve(1000);
     colors.reserve(1000);
+
+    // async load the geojson file
+    std::thread loadThread([this, &progressBar]() {
+        loadFromGeoJSON();
+        progressBar.incrementProgress();
+    });
+    loadThread.join();
 }
 
 void MapRenderer::loadFromGeoJSON() {
+    // Random colors
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 255);
+
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open GeoJSON file!");
@@ -62,6 +71,7 @@ void MapRenderer::loadFromGeoJSON() {
 
     const auto& features = geojsonData["features"];
     polygons.reserve(features.size() * 2); // Reserve estimated space
+    colors.reserve(features.size() * 2);
 
     #pragma omp parallel for
     for (size_t i = 0; i < features.size(); i++) {
@@ -77,6 +87,7 @@ void MapRenderer::loadFromGeoJSON() {
             for (const auto& polygon : geometry["coordinates"]) {
                 #pragma omp critical
                 addPolygon(polygon);
+                colors.push_back(sf::Color(dis(gen), dis(gen), dis(gen), 50));
             }
         }
     }
@@ -96,8 +107,8 @@ void MapRenderer::addPolygon(const json& coordinates) {
     polygons.push_back(std::move(polygon));
 }
 
-void MapRenderer::draw(sf::RenderWindow& window) {
-    calculateScaleAndOffset(window.getSize());
+void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor) {
+    calculateScaleAndOffset(window.getSize(), zoomFactor);
 
     // Create vertex arrays for batch rendering
     std::vector<sf::VertexArray> shapes;
@@ -106,22 +117,46 @@ void MapRenderer::draw(sf::RenderWindow& window) {
     #pragma omp parallel for
     for (size_t i = 0; i < polygons.size(); i++) {
         const auto& polygon = polygons[i];
-        sf::VertexArray shape(sf::TriangleFan, polygon.coordinates.size());
-        
+        sf::VertexArray shape(sf::LineStrip, polygon.coordinates.size() + 1);
+
+        // Create the polygon shape
         for (size_t j = 0; j < polygon.coordinates.size(); j++) {
-            float x = static_cast<float>((polygon.coordinates[j].x - minBounds.x) * scale + offset.x);
-            float y = static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * scale + offset.y);
-            shape[j].position = sf::Vector2f(x, y);
-            shape[j].color = colors[i];
+            shape[j].position = sf::Vector2f(
+                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * scale + offset.x),
+                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * scale + offset.y)
+            );
+            shape[j].color = colors[i]; // Ensure color is applied
         }
 
+        // Close the polygon
+        shape[polygon.coordinates.size()].position = shape[0].position;
+        shape[polygon.coordinates.size()].color = colors[i];
+
         #pragma omp critical
-        shapes.push_back(std::move(shape));
+        {
+            shapes.push_back(std::move(shape));
+        }
     }
 
     // Batch render all shapes
     for (const auto& shape : shapes) {
         window.draw(shape);
+    }
+
+    // Draw the outline
+    for (const auto& polygon : polygons) {
+        sf::VertexArray outline(sf::LineStrip, polygon.coordinates.size() + 1);
+        for (size_t j = 0; j < polygon.coordinates.size(); j++) {
+            outline[j].position = sf::Vector2f(
+                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * scale + offset.x),
+                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * scale + offset.y)
+            );
+            outline[j].color = sf::Color::Black; // Outline color
+        }
+        outline[polygon.coordinates.size()].position = outline[0].position;
+        outline[polygon.coordinates.size()].color = sf::Color::Black;
+
+        window.draw(outline);
     }
 }
 
