@@ -42,7 +42,7 @@ private:
 
     void calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor, const sf::Vector2u& textureSize);
     bool isPointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& polygon);
-    sf::Vector2f calculateCentroid(const std::vector<sf::Vector2f>& coordinates);
+    sf::Vector2f calculateCentroid(std::vector<sf::Vector2f>& coordinates);
 
 public:
     bool toggleNames = false;

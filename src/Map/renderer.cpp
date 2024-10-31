@@ -129,7 +129,7 @@ void MapRenderer::addPolygon(const json& coordinates) {
     polygons.push_back(std::move(vertexArray));
 }
 
-sf::Vector2f MapRenderer::calculateCentroid(const std::vector<sf::Vector2f>& coordinates) {
+sf::Vector2f MapRenderer::calculateCentroid(std::vector<sf::Vector2f>& coordinates) {
     float sumX = 0.0f;
     float sumY = 0.0f;
     for (const auto& coord : coordinates) {
@@ -193,34 +193,8 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const Rendere
 
         }
 
-        // Add triangles for rendering polygons
-        for (size_t j = 1; j < polygon.getVertexCount() - 1; j++) {
-            vertexArray.append(sf::Vertex(
-                sf::Vector2f(
-                    static_cast<float>((polygon[0].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon[0].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
-                ),
-                color
-            ));
-            vertexArray.append(sf::Vertex(
-                sf::Vector2f(
-                    static_cast<float>((polygon[j].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon[j].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
-                ),
-                color
-            ));
-            vertexArray.append(sf::Vertex(
-                sf::Vector2f(
-                    static_cast<float>((polygon[j + 1].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon[j + 1].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
-                ),
-                color
-            ));
-        }
     }
 
-    // Render the entire vertex array in one draw call
-    window.draw(vertexArray);
 
     // Only draw country names if toggleNames is true
     if (toggleNames) {
