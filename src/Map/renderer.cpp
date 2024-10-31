@@ -4,17 +4,20 @@ void MapRenderer::calculateBounds() {
     if (polygons.empty()) return;
     
     // Initialize bounds with first coordinate
-    minBounds = polygons[0].coordinates[0];
-    maxBounds = polygons[0].coordinates[0];
+    const auto& firstPolygon = polygons[0];
+    const auto& firstPoint = firstPolygon[0];
+    minBounds = sf::Vector2f(firstPoint.position.x, firstPoint.position.y);
+    maxBounds = sf::Vector2f(firstPoint.position.x, firstPoint.position.y);
     
     // Single pass bounds calculation
     #pragma omp parallel for reduction(min:minBounds.x,minBounds.y) reduction(max:maxBounds.x,maxBounds.y)
     for (size_t i = 0; i < polygons.size(); i++) {
-        for (const auto& coord : polygons[i].coordinates) {
-            minBounds.x = std::min(minBounds.x, coord.x);
-            maxBounds.x = std::max(maxBounds.x, coord.x);
-            minBounds.y = std::min(minBounds.y, coord.y);
-            maxBounds.y = std::max(maxBounds.y, coord.y);
+        for (size_t j = 0; j < polygons[i].getVertexCount(); j++) {
+            const auto& coord = polygons[i][j];
+            minBounds.x = std::min(minBounds.x, static_cast<decltype(minBounds.x)>(coord.position.x));
+            maxBounds.x = std::max(maxBounds.x, static_cast<decltype(maxBounds.x)>(coord.position.x));
+            minBounds.y = std::min(minBounds.y, static_cast<decltype(minBounds.y)>(coord.position.y));
+            maxBounds.y = std::max(maxBounds.y, static_cast<decltype(maxBounds.y)>(coord.position.y));
         }
     }
 }
@@ -40,7 +43,6 @@ void MapRenderer::calculateScaleAndOffset(const sf::Vector2u& windowSize, float 
 
 MapRenderer::MapRenderer(const std::string& filename, ProgressBar& progressBar) : filename(filename) {
     // Reserve space for large datasets
-    polygons.reserve(1000);
     colors.reserve(1000);
     
     font.loadFromFile("res/font/arial.TTF");
@@ -104,20 +106,30 @@ void MapRenderer::loadFromGeoJSON() {
 }
 
 void MapRenderer::addPolygon(const json& coordinates) {
-    Polygon polygon;
+    sf::ConvexShape polygon;
     const auto& points = coordinates[0];
-    polygon.coordinates.reserve(points.size());
+    polygon.setPointCount(points.size());
     
-    for (const auto& point : points) {
-        polygon.coordinates.emplace_back(Coordinate{
-            point[0].get<double>(),
-            point[1].get<double>()
-        });
+    for (size_t i = 0; i < points.size(); i++) {
+        polygon.setPoint(i, sf::Vector2f(
+            points[i][0].get<double>(),
+            points[i][1].get<double>()
+        ));
     }
-    polygons.push_back(std::move(polygon));
+    // Convert sf::ConvexShape to sf::VertexArray
+    sf::VertexArray vertexArray(sf::TrianglesFan, polygon.getPointCount());
+    for (size_t i = 0; i < polygon.getPointCount(); ++i) {
+        vertexArray[i].position = polygon.getPoint(i);
+        vertexArray[i].color = sf::Color::White; // or any default color
+    }
+
+    // make the last point the same as the first point to close the shape
+    vertexArray[vertexArray.getVertexCount() - 1].position = vertexArray[0].position;
+    vertexArray[vertexArray.getVertexCount() - 1].color = vertexArray[0].color;
+    polygons.push_back(std::move(vertexArray));
 }
 
-sf::Vector2f MapRenderer::calculateCentroid(const std::vector<Coordinate>& coordinates) {
+sf::Vector2f MapRenderer::calculateCentroid(const std::vector<sf::Vector2f>& coordinates) {
     float sumX = 0.0f;
     float sumY = 0.0f;
     for (const auto& coord : coordinates) {
@@ -153,8 +165,14 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const Rendere
             std::string displayName = (i < names.size() && !names[i].empty()) ? names[i] : "Unknown";
             countryNames[i] = sf::Text(displayName, font);
 
+            // Create a vector of coordinates from the polygon points
+            std::vector<sf::Vector2f> coordinates;
+            for (size_t k = 0; k < polygon.getVertexCount(); ++k) {
+                coordinates.push_back(polygon[k].position);
+            }
+
             // Calculate the centroid of the polygon for positioning
-            sf::Vector2f centroid = calculateCentroid(polygon.coordinates);
+            sf::Vector2f centroid = calculateCentroid(coordinates);
 
             // Calculate bounding box size of the polygon for scaling the text
             float polygonWidth = maxBounds.x - minBounds.x;
@@ -176,25 +194,25 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const Rendere
         }
 
         // Add triangles for rendering polygons
-        for (size_t j = 1; j < polygon.coordinates.size() - 1; j++) {
+        for (size_t j = 1; j < polygon.getVertexCount() - 1; j++) {
             vertexArray.append(sf::Vertex(
                 sf::Vector2f(
-                    static_cast<float>((polygon.coordinates[0].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon.coordinates[0].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                    static_cast<float>((polygon[0].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon[0].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
                 ),
                 color
             ));
             vertexArray.append(sf::Vertex(
                 sf::Vector2f(
-                    static_cast<float>((polygon.coordinates[j].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                    static_cast<float>((polygon[j].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon[j].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
                 ),
                 color
             ));
             vertexArray.append(sf::Vertex(
                 sf::Vector2f(
-                    static_cast<float>((polygon.coordinates[j + 1].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                    static_cast<float>((maxBounds.y - polygon.coordinates[j + 1].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                    static_cast<float>((polygon[j + 1].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                    static_cast<float>((maxBounds.y - polygon[j + 1].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
                 ),
                 color
             ));
@@ -213,16 +231,16 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const Rendere
 
     // Draw the outline
     for (const auto& polygon : polygons) {
-        sf::VertexArray outline(sf::LineStrip, polygon.coordinates.size() + 1);
-        for (size_t j = 0; j < polygon.coordinates.size(); j++) {
+        sf::VertexArray outline(sf::LineStrip, polygon.getVertexCount() + 1);
+        for (size_t j = 0; j < polygon.getVertexCount(); j++) {
             outline[j].position = sf::Vector2f(
-                static_cast<float>((polygon.coordinates[j].x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                static_cast<float>((maxBounds.y - polygon.coordinates[j].y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                static_cast<float>((polygon[j].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
+                static_cast<float>((maxBounds.y - polygon[j].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
             );
             outline[j].color = sf::Color::Black; // Outline color
         }
-        outline[polygon.coordinates.size()].position = outline[0].position;
-        outline[polygon.coordinates.size()].color = sf::Color::Black;
+        outline[polygon.getVertexCount()].position = outline[0].position;
+        outline[polygon.getVertexCount()].color = sf::Color::Black;
 
         window.draw(outline);
     }
@@ -248,7 +266,7 @@ void MapRenderer::update(const sf::Vector2f& mousePos, sf::RenderWindow& window,
 
 }
 
-bool MapRenderer::isPointInPolygon(const sf::Vector2f& point, const std::vector<Coordinate>& polygon) {
+bool MapRenderer::isPointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& polygon) {
     bool inside = false;
     for (size_t i = 0, j = polygon.size() - 1; i < polygon.size(); j = i++) {
         const auto& pi = polygon[i];

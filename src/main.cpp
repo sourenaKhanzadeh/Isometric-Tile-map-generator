@@ -75,6 +75,9 @@ int main() {
     progressBar.setTotalItems(3);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
+    view.setSize(1920, 1080);
+    view.setCenter(1920 / 2, 1080 / 2);
+    view.zoom(1.0f);
      // MapRenderer mapRenderer("./countries.geo.json");
 
     MapDrawTexture mapDrawTexture(progressBar);
@@ -130,6 +133,7 @@ int main() {
             }
         }
         ImGui::End();
+        window.setView(view);
         // Obtain map scaling and offset
         sf::Vector2u windowSize = window.getSize();
         sf::Vector2u textureSize = mapDrawTexture.getTextureSize();
@@ -139,7 +143,6 @@ int main() {
                                       static_cast<sf::Uint8>(contourColor[2] * 255));
         float mapScale = cameraController.getZoomFactor();
         sf::Vector2f mapOffset = cameraController.getOffsetWithZoom();
-        window.setView(view);
         cameraController.update();
         mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)), window, mapDrawTexture);
         // Render main game window

@@ -27,21 +27,13 @@ struct RendererSettings {
 
 };
 
-struct Coordinate {
-    double x, y;
-};
-
-struct Polygon {
-    std::vector<Coordinate> coordinates;
-};
 
 class MapRenderer {
 private:
     std::string selectedCountry;
-    Polygon selectedPolygon;
     std::vector<std::string> names;
-    std::vector<Polygon> polygons;
-    Coordinate minBounds, maxBounds;
+    std::vector<sf::VertexArray> polygons;
+    sf::Vector2f minBounds, maxBounds;
     double scale;
     sf::Vector2f offset;
     std::vector<sf::Color> colors;
@@ -49,8 +41,8 @@ private:
     sf::Font font;
 
     void calculateScaleAndOffset(const sf::Vector2u& windowSize, float zoomFactor, const sf::Vector2u& textureSize);
-    bool isPointInPolygon(const sf::Vector2f& point, const std::vector<Coordinate>& polygon);
-    sf::Vector2f calculateCentroid(const std::vector<Coordinate>& coordinates);
+    bool isPointInPolygon(const sf::Vector2f& point, const std::vector<sf::Vector2f>& polygon);
+    sf::Vector2f calculateCentroid(const std::vector<sf::Vector2f>& coordinates);
 
 public:
     bool toggleNames = false;
