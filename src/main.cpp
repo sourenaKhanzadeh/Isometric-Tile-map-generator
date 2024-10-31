@@ -10,6 +10,8 @@
 #include <imgui.h>
 #include <imgui-sfml.h>
 #include "Map/plot.hpp"
+#include "Map/map_texture.hpp"
+
 #define DEBUG 1
 int main() {
     // Main game window setup
@@ -139,7 +141,7 @@ int main() {
         sf::Vector2f mapOffset = cameraController.getOffsetWithZoom();
         window.setView(view);
         cameraController.update();
-        mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
+        mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)), window, mapDrawTexture);
         // Render main game window
         window.clear(sf::Color::Black);
         // mapRenderer.draw(window);

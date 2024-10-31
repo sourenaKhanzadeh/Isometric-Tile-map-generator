@@ -12,7 +12,7 @@
 #include <random>
 #include <iostream>
 #include "../Utils/progressbar.hpp"
-
+#include "map_texture.hpp"
 #define DEBUG_MAP_RENDERER
 
 using json = nlohmann::json;
@@ -62,26 +62,8 @@ public:
     void addPolygon(const json& coordinates);
 
     void draw(sf::RenderWindow& window, float zoomFactor, const RendererSettings& rendererSettings, const sf::Vector2u& textureSize);
-    void update(const sf::Vector2f& mousePos);
+    void update(const sf::Vector2f& mousePos, sf::RenderWindow& window, MapDrawTexture& mapDrawTexture);
     void updateSelectedColor(const sf::Color& color);
-};
-
-class MapDrawTexture {
-public:
-    MapDrawTexture(ProgressBar& progressBar);
-    void loadTexturesAsync();
-    void updateMapTexture(float zoomFactor, const sf::Vector2u& windowSize);
-    void draw(sf::RenderWindow& window);
-    sf::Vector2u getTextureSize();
-
-private:
-    sf::Texture lowResTexture;
-    sf::Texture highResTexture;
-    sf::Sprite mapSprite;
-    bool isHighResActive = false;
-    float currentZoomFactor = 1.0f;
-
-    ProgressBar& progressBar;
 };
 
 
