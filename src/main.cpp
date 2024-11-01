@@ -11,6 +11,7 @@
 #include <imgui-sfml.h>
 #include "Map/map_texture.hpp"
 
+
 #define DEBUG 1
 int main() {
     // Main game window setup
@@ -71,13 +72,14 @@ int main() {
     }
     // anchor the progress bar to bottom center of the screen
     ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
-    progressBar.setTotalItems(2);
+    progressBar.setTotalItems(3);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
     view.setSize(1920, 1080);
     view.setCenter(1920 / 2, 1080 / 2);
     view.zoom(1.0f);
-     // MapRenderer mapRenderer("./countries.geo.json");
+    MapRenderer mapRenderer("./countries.geo.json", progressBar);
+    mapRenderer.calculateBounds();
 
     MapDrawTexture mapDrawTexture(progressBar);
 
@@ -130,6 +132,7 @@ int main() {
         window.clear(sf::Color::Black);
         mapDrawTexture.draw(window);
         mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
+        mapRenderer.draw(window, cameraController.getZoomFactor(), rendererSettings, textureSize);
         ImGui::SFML::Render(window);
         window.display();
     }

@@ -13,6 +13,7 @@ function(fetch_and_create_library target_name source_dir)
 
     # Set include directories for the library
     target_include_directories(${target_name} PUBLIC "${source_dir}")
+    
 
     # Set the output directory for the library
     set_target_properties(${target_name} PROPERTIES
@@ -25,6 +26,10 @@ function(fetch_and_create_library target_name source_dir)
     if(ARGN)
         target_link_libraries(${target_name} PUBLIC ${ARGN})
         message(STATUS "Dependencies for ${target_name}: ${ARGN}")
+    endif()
+
+    if(target_name STREQUAL "MapRenderer")
+        target_include_directories(${target_name} PUBLIC ${MAPBOX_GEOMETRY_INCLUDE_DIRS} ${MAPBOX_VARIANT_INCLUDE_DIRS})
     endif()
 
     # Get the number of source files
