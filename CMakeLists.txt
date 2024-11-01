@@ -8,7 +8,6 @@ option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 include(FetchContent)
 include(cmake/CPM.cmake)
 
-
 add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
 
 # FetchContent_MakeAvailable(mapgen)
