@@ -209,7 +209,7 @@ void MapRenderer::draw(sf::RenderWindow& window, float zoomFactor, const Rendere
         for (size_t j = 0; j < polygon.getVertexCount(); j++) {
             outline[j].position = sf::Vector2f(
                 static_cast<float>((polygon[j].position.x - minBounds.x) * (rendererSettings.scale.x + scale) + (rendererSettings.offset.x + offset.x)),
-                static_cast<float>((maxBounds.y - polygon[j].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
+                static_cast<float>((maxBounds.y -polygon[j].position.y) * (rendererSettings.scale.y + scale) + (rendererSettings.offset.y + offset.y))
             );
             outline[j].color = sf::Color::Black; // Outline color
         }

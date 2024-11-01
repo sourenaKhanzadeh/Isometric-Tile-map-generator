@@ -46,11 +46,11 @@ void MapDrawTexture::updateMapTexture(float zoomFactor, const sf::Vector2u& wind
     // Apply uniform scaling to fit the screen
     mapSprite.setScale(scaleX * zoomFactor, scaleY * zoomFactor);
 
-    // Center the map sprite based on window size and scaled texture dimensions
-    mapSprite.setPosition(
-        (windowSize.x - textureSize.x * mapSprite.getScale().x) / 2.0f,
-        (windowSize.y - textureSize.y * mapSprite.getScale().y) / 2.0f
-    );
+    // // Center the map sprite based on window size and scaled texture dimensions
+    // mapSprite.setPosition(
+    //     (windowSize.x - textureSize.x * mapSprite.getScale().x),
+    //     (windowSize.y - textureSize.y * mapSprite.getScale().y)
+    // );
 }
 
 void MapDrawTexture::draw(sf::RenderWindow& window) {

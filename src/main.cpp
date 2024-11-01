@@ -9,7 +9,6 @@
 #include "Utils/progressbar.hpp"
 #include <imgui.h>
 #include <imgui-sfml.h>
-#include "Map/plot.hpp"
 #include "Map/map_texture.hpp"
 
 #define DEBUG 1
@@ -72,7 +71,7 @@ int main() {
     }
     // anchor the progress bar to bottom center of the screen
     ProgressBar progressBar(window, sf::Vector2f(1920, 20), sf::Vector2f(0, 1080 - 20), sf::Color::Green, sf::Color::White);
-    progressBar.setTotalItems(3);
+    progressBar.setTotalItems(2);
 
     sf::View view(sf::FloatRect(0, 0, 1920, 1080));
     view.setSize(1920, 1080);
@@ -87,9 +86,6 @@ int main() {
     std::thread textureLoadingThread([&mapDrawTexture]() {
         mapDrawTexture.loadTexturesAsync();
     });
-    MapRenderer mapRenderer("./countries.geo.json", progressBar);
-    mapRenderer.loadFromGeoJSON();
-    mapRenderer.calculateBounds();
 
     progressBar.update("Loading textures...");
 
@@ -98,8 +94,7 @@ int main() {
     float mapColors[3] = {0.f, 0.f, 0.f};
     float contourColor[3] = {0.f, 0.f, 0.f};
     std::string countryName(100, '\0');
-    RendererSettings rendererSettings = {sf::Vector2f(0.0, 0.91), sf::Vector2f(0.0, -70.0)};
-    PlotOnMap *plotOnMap = new PlotOnMap();
+    RendererSettings rendererSettings = {sf::Vector2f(0.0, 0.0), sf::Vector2f(0.0, 0.0)};
     // Main game loop
     while (window.isOpen()) {
         sf::Event event;
@@ -119,19 +114,6 @@ int main() {
         ImGui::Text("Mouse Position: %lf, %lf", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
         ImGui::ColorEdit3("Color", mapColors);
         ImGui::ColorEdit3("Contour Color", contourColor);
-        if(ImGui::CollapsingHeader("Renderer: Settings")){
-            if(ImGui::CollapsingHeader("Names")){
-                ImGui::Checkbox("Toggle Names", &mapRenderer.toggleNames);
-                ImGui::SliderFloat("Font Size", &rendererSettings.fontSize, 1.0, 100.0);
-                ImGui::ColorEdit3("Font Color", rendererSettings.fontColor);
-            }
-            if(ImGui::CollapsingHeader("Scale and Offset")){
-                ImGui::SliderFloat("ScaleX", &rendererSettings.scale.x, 0.0, 1.0);
-                ImGui::SliderFloat("ScaleY", &rendererSettings.scale.y, 0.0, 1.0);
-                ImGui::SliderFloat("OffsetX", &rendererSettings.offset.x, -1000.0, 1000.0);
-                ImGui::SliderFloat("OffsetY", &rendererSettings.offset.y, -1000.0, 1000.0);
-            }
-        }
         ImGui::End();
         window.setView(view);
         // Obtain map scaling and offset
@@ -144,18 +126,13 @@ int main() {
         float mapScale = cameraController.getZoomFactor();
         sf::Vector2f mapOffset = cameraController.getOffsetWithZoom();
         cameraController.update();
-        mapRenderer.update(window.mapPixelToCoords(sf::Mouse::getPosition(window)), window, mapDrawTexture);
         // Render main game window
         window.clear(sf::Color::Black);
-        // mapRenderer.draw(window);
         mapDrawTexture.draw(window);
         mapDrawTexture.updateMapTexture(cameraController.getZoomFactor(), window.getSize());
-        plotOnMap->draw(window, cameraController.getZoomFactor());
-        mapRenderer.draw(window, cameraController.getZoomFactor(), rendererSettings, textureSize);
         ImGui::SFML::Render(window);
         window.display();
     }
-    delete plotOnMap;
     ImGui::SFML::Shutdown(window);
 
 #endif
