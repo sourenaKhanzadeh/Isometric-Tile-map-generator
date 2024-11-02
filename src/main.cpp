@@ -121,6 +121,9 @@ int main() {
             ImGui::SliderFloat("Water Threshold", &landmassSettings.waterThreshold, 0.0, 1.0, "%.2f");
             ImGui::SliderFloat("Plains Threshold", &landmassSettings.plainsThreshold, 0.0, 1.0, "%.2f");
             ImGui::SliderFloat("Hills Threshold", &landmassSettings.hillsThreshold, 0.0, 1.0, "%.2f");
+            ImGui::SliderFloat("Cube Height Multiplier", &landmassSettings.cubeHeightMultiplier, 0.0, 1000.0, "%.2f");
+            ImGui::Checkbox("Draw Grid", &landmassSettings.drawGrid);
+            ImGui::Checkbox("Draw Cubes", &landmassSettings.drawCubes);
         }
         ImGui::End();
         window.setView(view);

@@ -36,6 +36,8 @@ void CameraController::update() {
         view.move(0, moveSpeed * zoomLevel);
     }
 
+    // bird's eye view
+
     const float mapWidth = 1920.0f;
     const float mapHeight = 1080.0f;
     sf::Vector2f viewCenter = view.getCenter();

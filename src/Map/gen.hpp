@@ -9,13 +9,16 @@
 #include "../Camera/controller.hpp"
 
 struct LandmassSettings {
-    float octaveMultiplierX = 0.01;
-    float octaveMultiplierY = 0.01;
-    int octaves = 4;
-    int seedValue = 42;
-    float waterThreshold = 0.1;
-    float plainsThreshold = 0.3;
-    float hillsThreshold = 0.6;
+    float octaveMultiplierX = 0.06;
+    float octaveMultiplierY = 0.06;
+    int octaves = 20;
+    int seedValue = 97088;
+    float waterThreshold = 0.49;
+    float plainsThreshold = 0.58;
+    float hillsThreshold = 1.0;
+    float cubeHeightMultiplier = 22.33;
+    bool drawGrid = false;
+    bool drawCubes = true;
 };
 
 class LandmassGenerator {
@@ -25,12 +28,19 @@ public:
     void draw(sf::RenderWindow& window);
     LandmassSettings settings;
 private:
-    const int SCALE = 20;
+    const int SCALE = 5;
     const int GRID_WIDTH = 1920 / SCALE;
     const int GRID_HEIGHT = 1080 / SCALE;
     std::vector<std::vector<double>> grid;
     LandmassSettings previousSettings;
-    void makeCube(int x, int y, sf::RenderWindow& window);
+    sf::VertexArray vertexArray;
+    std::vector<std::vector<sf::Color>> cachedColors;
+    void drawGrid(sf::RenderWindow& window);
+    void rebuildVertexArray();
+    void makeTile(int x, int y, sf::RenderWindow& window);
+    void addCubeVertices(int x, int y);
+    void addTileVertices(int x, int y);
+    void cacheColors();
 };
 
 #endif

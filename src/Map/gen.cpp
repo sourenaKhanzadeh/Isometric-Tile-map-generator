@@ -21,105 +21,166 @@ void LandmassGenerator::generateLandmass() {
     }
 
     previousSettings = settings; // Update previous settings
+    cacheColors();
+    rebuildVertexArray();
+    
 }
 
-LandmassGenerator::LandmassGenerator(LandmassSettings settings) : settings(settings) {
+LandmassGenerator::LandmassGenerator(LandmassSettings settings) : settings(settings), previousSettings(settings) {
     generateLandmass();
 }
 
-void LandmassGenerator::draw(sf::RenderWindow& window) {
-    // Check for changes in settings
-    if (settings.seedValue != previousSettings.seedValue ||
-        settings.octaveMultiplierX != previousSettings.octaveMultiplierX ||
-        settings.octaveMultiplierY != previousSettings.octaveMultiplierY ||
-        settings.octaves != previousSettings.octaves ||
-        settings.waterThreshold != previousSettings.waterThreshold ||
-        settings.plainsThreshold != previousSettings.plainsThreshold ||
-        settings.hillsThreshold != previousSettings.hillsThreshold) 
-    {
-        generateLandmass(); // Regenerate grid if settings have changed
-    }
 
-    // Render the grid
-    for (int x = 0; x < GRID_WIDTH; ++x) {
-        for (int y = 0; y < GRID_HEIGHT; ++y) {
-            sf::RectangleShape rect(sf::Vector2f(SCALE, SCALE));
-            rect.setPosition(x * SCALE, y * SCALE);
+void LandmassGenerator::rebuildVertexArray() {
+    vertexArray.clear();
+    vertexArray.setPrimitiveType(sf::Quads);
 
-            // Set color based on elevation thresholds
-            double noiseValue = grid[x][y];
-            if (noiseValue < settings.waterThreshold) {
-                rect.setFillColor(sf::Color(0, 0, 139, 150)); // Water
-            } else if (noiseValue < settings.plainsThreshold) {
-                rect.setFillColor(sf::Color(34, 139, 34, 180)); // Plains
-            } else if (noiseValue < settings.hillsThreshold) {
-                rect.setFillColor(sf::Color(139, 69, 19, 200)); // Hills
-            } else {
-                rect.setFillColor(sf::Color(255, 255, 255, 220)); // Mountains
+    if (settings.drawCubes) {
+        vertexArray.resize(GRID_WIDTH * GRID_HEIGHT * 12); // Allocate space for cubes
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+            for (int y = 0; y < GRID_HEIGHT; ++y) {
+                addCubeVertices(x, y);
             }
-
-            makeCube(x, y, window);
+        }
+    } else {
+        vertexArray.resize(GRID_WIDTH * GRID_HEIGHT * 4); // Allocate space for flat tiles
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+            for (int y = 0; y < GRID_HEIGHT; ++y) {
+                addTileVertices(x, y);
+            }
         }
     }
 }
 
-void LandmassGenerator::makeCube(int x, int y, sf::RenderWindow& window) {
-    // Get noise-based elevation value
+
+void LandmassGenerator::addCubeVertices(int x, int y) {
+    // Get noise-based elevation and position in isometric view
     double noiseValue = grid[x][y];
-    
-    // Calculate isometric position and height based on noise
+    float cubeHeight = noiseValue * settings.cubeHeightMultiplier;
     float isoX = (x - y) * (SCALE / 2);
     float isoY = (x + y) * (SCALE / 4);
-    float cubeHeight = noiseValue * 50; // Scale height for different elevation
 
-    // Define the colors for the top and sides based on elevation
+    // Define colors based on terrain type
     sf::Color topColor, sideColor;
     if (noiseValue < settings.waterThreshold) {
-        topColor = sf::Color(0, 0, 139); // Water color
-        sideColor = sf::Color(0, 0, 100); // Darker side color for depth
+        topColor = sf::Color(0, 105, 148);  // Ocean Blue
+        sideColor = sf::Color(0, 75, 105);  // Shadowed side
     } else if (noiseValue < settings.plainsThreshold) {
-        topColor = sf::Color(34, 139, 34); // Plains color
-        sideColor = sf::Color(28, 100, 28); // Darker side color
+        topColor = sf::Color(34, 139, 34);  // Forest Green
+        sideColor = sf::Color(24, 100, 24);
     } else if (noiseValue < settings.hillsThreshold) {
-        topColor = sf::Color(139, 69, 19); // Hills color
-        sideColor = sf::Color(100, 50, 15); // Darker side color
+        topColor = sf::Color(205, 133, 63); // Brown
+        sideColor = sf::Color(139, 69, 19);
     } else {
-        topColor = sf::Color(255, 255, 255); // Mountain color
-        sideColor = sf::Color(200, 200, 200); // Darker side color
+        topColor = sf::Color(220, 220, 220); // Snow
+        sideColor = sf::Color(169, 169, 169);
     }
 
-    // Define vertices for the top face
+    // Define top face vertices
     sf::Vector2f topLeft(isoX, isoY - cubeHeight);
     sf::Vector2f topRight(isoX + SCALE / 2, isoY - SCALE / 4 - cubeHeight);
     sf::Vector2f bottomLeft(isoX - SCALE / 2, isoY - SCALE / 4 - cubeHeight);
     sf::Vector2f bottomRight(isoX, isoY - SCALE / 2 - cubeHeight);
 
-    // Define vertices for the left and right side faces
-    sf::VertexArray topFace(sf::Quads, 4);
-    topFace[0].position = topLeft;
-    topFace[1].position = topRight;
-    topFace[2].position = bottomRight;
-    topFace[3].position = bottomLeft;
-    for (int i = 0; i < 4; i++) topFace[i].color = topColor;
+    // Add top face vertices
+    vertexArray.append(sf::Vertex(topLeft, topColor));
+    vertexArray.append(sf::Vertex(topRight, topColor));
+    vertexArray.append(sf::Vertex(bottomRight, topColor));
+    vertexArray.append(sf::Vertex(bottomLeft, topColor));
 
-    sf::VertexArray leftFace(sf::Quads, 4);
-    leftFace[0].position = bottomLeft;
-    leftFace[1].position = sf::Vector2f(bottomLeft.x, bottomLeft.y + cubeHeight);
-    leftFace[2].position = sf::Vector2f(topLeft.x, topLeft.y + cubeHeight);
-    leftFace[3].position = topLeft;
-    for (int i = 0; i < 4; i++) leftFace[i].color = sideColor;
+    // Left face
+    vertexArray.append(sf::Vertex(bottomLeft, sideColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(bottomLeft.x, bottomLeft.y + cubeHeight), sideColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(topLeft.x, topLeft.y + cubeHeight), sideColor));
+    vertexArray.append(sf::Vertex(topLeft, sideColor));
 
-    sf::VertexArray rightFace(sf::Quads, 4);
-    rightFace[0].position = bottomRight;
-    rightFace[1].position = sf::Vector2f(bottomRight.x, bottomRight.y + cubeHeight);
-    rightFace[2].position = sf::Vector2f(topRight.x, topRight.y + cubeHeight);
-    rightFace[3].position = topRight;
-    for (int i = 0; i < 4; i++) rightFace[i].color = sideColor;
+    // Right face
+    vertexArray.append(sf::Vertex(bottomRight, sideColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(bottomRight.x, bottomRight.y + cubeHeight), sideColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(topRight.x, topRight.y + cubeHeight), sideColor));
+    vertexArray.append(sf::Vertex(topRight, sideColor));
+}
 
-    // Draw each face
-    window.draw(leftFace);
-    window.draw(rightFace);
-    window.draw(topFace);
+void LandmassGenerator::addTileVertices(int x, int y) {
+    sf::Color tileColor = cachedColors[x][y];
+    float posX = x * SCALE;
+    float posY = y * SCALE;
+
+    vertexArray.append(sf::Vertex(sf::Vector2f(posX, posY), tileColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(posX + SCALE, posY), tileColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(posX + SCALE, posY + SCALE), tileColor));
+    vertexArray.append(sf::Vertex(sf::Vector2f(posX, posY + SCALE), tileColor));
+}
+
+void LandmassGenerator::draw(sf::RenderWindow& window) {
+    if (settings.cubeHeightMultiplier != previousSettings.cubeHeightMultiplier 
+        || settings.drawCubes != previousSettings.drawCubes
+        || settings.octaveMultiplierX != previousSettings.octaveMultiplierX
+        || settings.octaveMultiplierY != previousSettings.octaveMultiplierY
+        || settings.octaves != previousSettings.octaves
+        || settings.seedValue != previousSettings.seedValue
+        || settings.waterThreshold != previousSettings.waterThreshold
+        || settings.plainsThreshold != previousSettings.plainsThreshold
+        || settings.hillsThreshold != previousSettings.hillsThreshold
+    ) {
+        generateLandmass();
+        previousSettings = settings; // Update previousSettings here
+    }
+
+    window.draw(vertexArray);
+
+    if (settings.drawGrid) {
+        drawGrid(window);
+    }
 }
 
 
+void LandmassGenerator::cacheColors() {
+    cachedColors.clear();
+    for (int x = 0; x < GRID_WIDTH; ++x) {
+        std::vector<sf::Color> row;
+        for (int y = 0; y < GRID_HEIGHT; ++y) {
+            double noiseValue = grid[x][y];
+            sf::Color tileColor;
+
+            if (noiseValue < settings.waterThreshold) {
+                tileColor = sf::Color(0, 105, 148);  // Ocean Blue
+            } else if (noiseValue < settings.plainsThreshold) {
+                tileColor = sf::Color(34, 139, 34);  // Forest Green
+            } else if (noiseValue < settings.hillsThreshold) {
+                tileColor = sf::Color(205, 133, 63); // Earthy Brown
+            } else {
+                tileColor = sf::Color(220, 220, 220); // Snowy White
+            }
+
+            // Apply brightness adjustment based on noise value
+            int brightnessAdjustment = static_cast<int>(noiseValue * 50);
+            tileColor.r = std::min(tileColor.r + brightnessAdjustment, 255);
+            tileColor.g = std::min(tileColor.g + brightnessAdjustment, 255);
+            tileColor.b = std::min(tileColor.b + brightnessAdjustment, 255);
+
+            row.push_back(tileColor);
+        }
+        cachedColors.push_back(row);
+    }
+}
+
+
+void LandmassGenerator::drawGrid(sf::RenderWindow& window) {
+    // Use vertex array for grid to reduce individual draw calls
+    sf::VertexArray gridLines(sf::Lines);
+
+    // Vertical lines
+    for (int x = 0; x <= GRID_WIDTH; ++x) {
+        gridLines.append(sf::Vertex(sf::Vector2f(x * SCALE, 0), sf::Color(50, 50, 50, 100)));
+        gridLines.append(sf::Vertex(sf::Vector2f(x * SCALE, GRID_HEIGHT * SCALE), sf::Color(50, 50, 50, 100)));
+    }
+
+    // Horizontal lines
+    for (int y = 0; y <= GRID_HEIGHT; ++y) {
+        gridLines.append(sf::Vertex(sf::Vector2f(0, y * SCALE), sf::Color(50, 50, 50, 100)));
+        gridLines.append(sf::Vertex(sf::Vector2f(GRID_WIDTH * SCALE, y * SCALE), sf::Color(50, 50, 50, 100)));
+    }
+
+    window.draw(gridLines);
+}
