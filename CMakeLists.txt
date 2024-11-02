@@ -22,6 +22,8 @@ set(LIBRARIES_TO_LINK)
 find_path(MAPBOX_GEOMETRY_INCLUDE_DIRS "mapbox/feature.hpp")
 find_path(MAPBOX_VARIANT_INCLUDE_DIRS "mapbox/optional.hpp")
 
+set(LIB_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/libs/")
+
 
 fetch_and_create_library(MapRenderer src/Map nlohmann_json sfml-graphics)
 fetch_and_create_library(CameraController src/Camera sfml-graphics)
@@ -29,12 +31,13 @@ fetch_and_create_library(Utils src/Utils  nlohmann_json sfml-graphics)
 
 list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils)
 
+target_include_directories(MapRenderer PRIVATE ${LIB_INCLUDE_DIRS})
 
 # Main executable
 add_executable(main src/main.cpp)
 # Link all libraries created from subdirectories and additional dependencies
 target_link_libraries(main PRIVATE ${LIBRARIES_TO_LINK} sfml-graphics nlohmann_json ImGui-SFML::ImGui-SFML)
-target_include_directories(main PRIVATE ${MAPBOX_GEOMETRY_INCLUDE_DIRS} ${MAPBOX_VARIANT_INCLUDE_DIRS})
+target_include_directories(main PRIVATE ${MAPBOX_GEOMETRY_INCLUDE_DIRS} ${MAPBOX_VARIANT_INCLUDE_DIRS} ${LIB_INCLUDE_DIRS})
 
 target_compile_features(main PRIVATE cxx_std_17)
 

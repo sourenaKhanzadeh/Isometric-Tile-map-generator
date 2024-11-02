@@ -13,7 +13,6 @@
 #include <iostream>
 #include "../Utils/progressbar.hpp"
 #include "map_texture.hpp"
-#include <mapbox/geometry.hpp>
 
 #define DEBUG_MAP_RENDERER
 
