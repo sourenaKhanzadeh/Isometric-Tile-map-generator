@@ -30,6 +30,7 @@ private:
     const int GRID_HEIGHT = 1080 / SCALE;
     std::vector<std::vector<double>> grid;
     LandmassSettings previousSettings;
+    void makeCube(int x, int y, sf::RenderWindow& window);
 };
 
 #endif

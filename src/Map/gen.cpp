@@ -58,8 +58,68 @@ void LandmassGenerator::draw(sf::RenderWindow& window) {
                 rect.setFillColor(sf::Color(255, 255, 255, 220)); // Mountains
             }
 
-            window.draw(rect);
+            makeCube(x, y, window);
         }
     }
 }
+
+void LandmassGenerator::makeCube(int x, int y, sf::RenderWindow& window) {
+    // Get noise-based elevation value
+    double noiseValue = grid[x][y];
+    
+    // Calculate isometric position and height based on noise
+    float isoX = (x - y) * (SCALE / 2);
+    float isoY = (x + y) * (SCALE / 4);
+    float cubeHeight = noiseValue * 50; // Scale height for different elevation
+
+    // Define the colors for the top and sides based on elevation
+    sf::Color topColor, sideColor;
+    if (noiseValue < settings.waterThreshold) {
+        topColor = sf::Color(0, 0, 139); // Water color
+        sideColor = sf::Color(0, 0, 100); // Darker side color for depth
+    } else if (noiseValue < settings.plainsThreshold) {
+        topColor = sf::Color(34, 139, 34); // Plains color
+        sideColor = sf::Color(28, 100, 28); // Darker side color
+    } else if (noiseValue < settings.hillsThreshold) {
+        topColor = sf::Color(139, 69, 19); // Hills color
+        sideColor = sf::Color(100, 50, 15); // Darker side color
+    } else {
+        topColor = sf::Color(255, 255, 255); // Mountain color
+        sideColor = sf::Color(200, 200, 200); // Darker side color
+    }
+
+    // Define vertices for the top face
+    sf::Vector2f topLeft(isoX, isoY - cubeHeight);
+    sf::Vector2f topRight(isoX + SCALE / 2, isoY - SCALE / 4 - cubeHeight);
+    sf::Vector2f bottomLeft(isoX - SCALE / 2, isoY - SCALE / 4 - cubeHeight);
+    sf::Vector2f bottomRight(isoX, isoY - SCALE / 2 - cubeHeight);
+
+    // Define vertices for the left and right side faces
+    sf::VertexArray topFace(sf::Quads, 4);
+    topFace[0].position = topLeft;
+    topFace[1].position = topRight;
+    topFace[2].position = bottomRight;
+    topFace[3].position = bottomLeft;
+    for (int i = 0; i < 4; i++) topFace[i].color = topColor;
+
+    sf::VertexArray leftFace(sf::Quads, 4);
+    leftFace[0].position = bottomLeft;
+    leftFace[1].position = sf::Vector2f(bottomLeft.x, bottomLeft.y + cubeHeight);
+    leftFace[2].position = sf::Vector2f(topLeft.x, topLeft.y + cubeHeight);
+    leftFace[3].position = topLeft;
+    for (int i = 0; i < 4; i++) leftFace[i].color = sideColor;
+
+    sf::VertexArray rightFace(sf::Quads, 4);
+    rightFace[0].position = bottomRight;
+    rightFace[1].position = sf::Vector2f(bottomRight.x, bottomRight.y + cubeHeight);
+    rightFace[2].position = sf::Vector2f(topRight.x, topRight.y + cubeHeight);
+    rightFace[3].position = topRight;
+    for (int i = 0; i < 4; i++) rightFace[i].color = sideColor;
+
+    // Draw each face
+    window.draw(leftFace);
+    window.draw(rightFace);
+    window.draw(topFace);
+}
+
 
