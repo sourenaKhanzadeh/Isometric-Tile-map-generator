@@ -28,8 +28,9 @@ set(LIB_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/libs/")
 fetch_and_create_library(MapRenderer src/Map nlohmann_json sfml-graphics)
 fetch_and_create_library(CameraController src/Camera sfml-graphics)
 fetch_and_create_library(Utils src/Utils  nlohmann_json sfml-graphics)
+fetch_and_create_library(Basic src/Basic sfml-graphics)
 
-list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils)
+list(APPEND LIBRARIES_TO_LINK MapRenderer CameraController Utils Basic)
 
 target_include_directories(MapRenderer PRIVATE ${LIB_INCLUDE_DIRS})
 
